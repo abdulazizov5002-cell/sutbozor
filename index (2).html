@@ -1,0 +1,644 @@
+<!DOCTYPE html>
+<html lang="uz">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>SutBozor</title>
+<style>
+:root{box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px);
+--bg:#f3f7f8;--card:#fff;--ink:#14212b;--mut:#61717c;--line:#d9e3e8;--acc:#2a7a52;--accbg:#dff1e7;--warn:#8a5a00;--warnbg:#fbeecb;--bad:#a13a2c;--badbg:#f8e0dc;--milk:#2f7fa6;--gold:#d99a12;--s1:#2a7a52;--s2:#3b82a6;--s3:#c9892b;--s4:#8a5fb0}
+html{scroll-padding-top:env(safe-area-inset-top,0px)}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#0f1a20;--card:#172830;--ink:#eaf2f5;--mut:#93a6b0;--line:#2b414b;--acc:#63c793;--accbg:#173a2a;--warn:#f0c15f;--warnbg:#3a2e12;--bad:#f0907f;--badbg:#3d2320;--milk:#5aa8d0;--gold:#f0b840;--s1:#3f9d70;--s2:#4f9cc4;--s3:#d79a3c;--s4:#a67cc8}}
+:root[data-theme="dark"]{--bg:#0f1a20;--card:#172830;--ink:#eaf2f5;--mut:#93a6b0;--line:#2b414b;--acc:#63c793;--accbg:#173a2a;--warn:#f0c15f;--warnbg:#3a2e12;--bad:#f0907f;--badbg:#3d2320;--milk:#5aa8d0;--gold:#f0b840;--s1:#3f9d70;--s2:#4f9cc4;--s3:#d79a3c;--s4:#a67cc8}
+*,*::before,*::after{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font:16px/1.5 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif}
+main{max-width:800px;margin:0 auto;padding:14px 14px 40px}
+h1,h2,h3,.big{font-family:Georgia,"Times New Roman",serif;font-weight:700;letter-spacing:-.01em;margin:0}
+h1{font-size:24px}h2{font-size:19px;margin-bottom:10px}
+.hint{color:var(--mut);font-size:14px;margin:4px 0 0}
+.hd{display:flex;flex-wrap:wrap;gap:10px;justify-content:space-between;align-items:center}
+.seg{display:flex;gap:4px}
+.seg button,.nav button{padding:8px 12px;border:1px solid var(--line);background:var(--card);color:var(--ink);border-radius:9px;font:inherit;font-weight:600;cursor:pointer}
+.seg button[aria-pressed="true"],.nav button[aria-current="page"]{background:var(--acc);border-color:var(--acc);color:#fff}
+.nav{display:flex;gap:6px;margin:12px 0}.nav button{flex:1}
+.card{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:16px;margin-bottom:14px}
+.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:12px}
+label{display:block;font-size:13px;color:var(--mut)}
+input,select,textarea{width:100%;margin-top:4px;padding:8px 10px;border:1px solid var(--line);border-radius:8px;background:var(--bg);color:var(--ink);font:inherit}
+:focus-visible{outline:3px solid var(--milk);outline-offset:2px}
+.big{font-size:34px;line-height:1.1}.big.p{color:var(--warn)}
+.meter{display:flex;height:30px;border-radius:9px;overflow:hidden;margin:10px 0 6px;border:1px solid var(--line);background:repeating-linear-gradient(45deg,var(--line) 0 6px,transparent 6px 12px)}
+.meter i{display:flex;align-items:center;justify-content:center;color:#fff;font:600 12px system-ui;font-style:normal;white-space:nowrap;overflow:hidden}
+.tag{font-size:13px;padding:3px 10px;border-radius:999px;background:var(--accbg);color:var(--acc);white-space:nowrap;font-weight:600}
+.tag.x{background:var(--badbg);color:var(--bad)}.tag.w{background:var(--warnbg);color:var(--warn)}.tag.n{background:var(--bg);color:var(--mut);border:1px solid var(--line)}
+.row{display:flex;flex-wrap:wrap;gap:8px 12px;align-items:center;justify-content:space-between;padding:11px 0;border-top:1px solid var(--line)}
+.row.f{border-top:0}.row b{display:block}.row small{color:var(--mut)}
+.btn{padding:8px 13px;border-radius:9px;border:1px solid var(--line);background:var(--card);color:var(--ink);font:inherit;cursor:pointer}
+.btn.p{background:var(--acc);border-color:var(--acc);color:#fff;font-weight:600}.btn.d{color:var(--bad)}
+.acts{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin-top:10px}
+.two{display:grid;grid-template-columns:1fr 1fr;gap:10px}.two>div{border-radius:12px;padding:10px}
+.now{background:var(--accbg)}.cap{background:var(--bg);border:1px solid var(--line)}
+.dl{background:var(--bg);border:1px solid var(--line);border-radius:10px;padding:10px;margin-top:8px;font-size:14px}
+.sr{display:flex;flex-wrap:wrap;gap:4px 12px;align-items:center;justify-content:space-between;border-top:1px solid var(--line);padding:6px 0}
+.star{border:0;background:none;color:var(--line);font-size:28px;line-height:1;padding:2px 3px;cursor:pointer}.star.on{color:var(--gold)}
+.msg{color:var(--bad);font-size:14px;margin:8px 0 0}
+details summary{cursor:pointer;color:var(--mut);font-size:14px;margin-top:8px}
+.lg{list-style:none;margin:6px 0 0;padding:0;font-size:13px;color:var(--mut)}
+@media (max-width:480px){.two{grid-template-columns:1fr}}
+#adm{max-width:1100px;margin:0 auto;padding:14px}
+.an{display:flex;gap:6px;overflow-x:auto;margin:12px 0;padding-bottom:6px}
+.an button{flex:none;padding:8px 12px;border:1px solid var(--line);background:var(--card);color:var(--ink);border-radius:9px;font:inherit;font-weight:600;cursor:pointer}
+.an button[aria-current="page"]{background:var(--acc);border-color:var(--acc);color:#fff}
+.stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:12px;margin-bottom:14px}
+.stat{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:14px}
+.stat small{display:block;color:var(--mut);font-size:13px}.stat b{font:700 24px Georgia,serif}.stat span{display:block;color:var(--mut);font-size:13px}
+.tw{overflow-x:auto}.tw table{width:100%;border-collapse:collapse;font-size:13px}.tw th,.tw td{padding:8px;border-top:1px solid var(--line);text-align:left;white-space:nowrap;vertical-align:top}.tw th{color:var(--mut);font-weight:600;border-top:0}
+.br{display:grid;grid-template-columns:130px 1fr 110px;gap:10px;align-items:center;font-size:14px;margin:6px 0}.br div{background:var(--line);border-radius:6px;overflow:hidden}.br i{display:block;height:10px;background:var(--milk)}
+pre.sc{background:var(--bg);border:1px solid var(--line);border-radius:10px;padding:10px;font:12px/1.5 ui-monospace,Menlo,monospace;overflow-x:auto;margin:0}
+.nav{overflow-x:auto}.nav button{white-space:nowrap}
+#adm{--bg:#eef0f7;--card:#fff;--ink:#14212b;--mut:#5a6275;--line:#d5d9e8;--acc:#3b4ea8;--accbg:#e3e7fb;--warn:#8a5a00;--warnbg:#fbeecb;--bad:#a13a2c;--badbg:#f8e0dc;--milk:#3b4ea8;background:var(--bg);color:var(--ink);max-width:none;margin:0;padding:0;min-height:100vh}
+.aw{max-width:1280px;margin:0 auto;padding:14px}
+.ab{background:#1d2440;color:#fff;border-radius:12px;padding:14px 16px;display:flex;flex-wrap:wrap;gap:10px;justify-content:space-between;align-items:center}.ab h1{color:#fff}.ab .hint{color:#b9c0dc}
+.al .an{margin:12px 0}
+@media (min-width:900px){.al{display:grid;grid-template-columns:200px minmax(0,1fr);gap:16px;align-items:start}.al .an{flex-direction:column;overflow:visible;position:sticky;top:10px}.al .an button{text-align:left}}
+.btn.s{padding:3px 8px;font-size:13px;margin:2px 2px 2px 0}
+</style>
+</head>
+<body>
+<main>
+<div class="hd"><div><h1>🥛 SutBozor</h1><p class="hint">Uy xo'jaliklari va mahalliy bizneslarni bog'lovchi platforma</p></div>
+<div class="seg" id="roles"><button data-role="business">Biznes</button><button data-role="supplier">Supplier</button></div></div>
+<div id="supsel" style="margin-top:10px"></div>
+<nav class="nav" id="nav" aria-label="Bo'limlar"></nav>
+<div id="app"></div>
+<p class="hint" id="foot" style="text-align:center;margin-top:16px"></p>
+</main>
+<div id="adm" hidden></div>
+<script>
+const $=id=>document.getElementById(id);
+const esc=s=>String(s).replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+const fmt=n=>String(Math.round(n)).replace(/\B(?=(\d{3})+(?!\d))/g," ");
+const nm=n=>n.toFixed(1).replace(".",",").replace(/,0$/,"");
+const pad=n=>String(n).padStart(2,"0");
+const tmin=t=>{const [h,m]=t.split(":").map(Number);return h*60+m};
+const hm=m=>pad(Math.floor(m/60))+":"+pad(m%60);
+const nowT=()=>{const d=new Date();return pad(d.getHours())+":"+pad(d.getMinutes())};
+const CAT={Sut:"L",Qatiq:"L",Qaymoq:"L",Suzma:"kg",Tvorog:"kg","Sariyog'":"kg"};
+const AREAS={"Ziyokor":[5,5],"Oqtepa":[6.2,5],"Bog'ishamol":[5,7.4],"Yangiobod":[0.9,5],"Guliston":[2,3.5],"Do'stlik":[8,2],"Qorasuv":[9,8.2],"Navbahor":[11,5]};
+const dist=(a,b)=>Math.hypot(AREAS[a][0]-AREAS[b][0],AREAS[a][1]-AREAS[b][1]);
+const COL=["var(--s1)","var(--s2)","var(--s3)","var(--s4)"];
+const CR={toSup:[["Mahsulot sifati",30],["Tozalik/gigiyena",25],["Vaqtida yetkazish",20],["Miqdor aniqligi",15],["Muloqot",10]],toBiz:[["To'lov intizomi",40],["Buyurtma aniqligi",25],["Muloqot",15],["Buyurtmani qabul qilish",20]]};
+const PS=(n,t,c,p)=>({name:n,today:t,cap:c,price:p});
+const SUP0=[
+{id:"A",name:"Ergashevlar xo'jaligi",area:"Oqtepa",radius:3,rating:4.8,n:37,products:[PS("Sut",8,12,13500),PS("Qatiq",5,6,16000)]},
+{id:"B",name:"Karimovlar xo'jaligi",area:"Bog'ishamol",radius:5,rating:4.6,n:21,products:[PS("Sut",7,10,14000),PS("Tvorog",3,4,45000)]},
+{id:"C",name:"Qodirovlar xo'jaligi",area:"Yangiobod",radius:5,rating:4.9,n:12,products:[PS("Sut",5,8,14500),PS("Sariyog'",2,3,95000)]},
+{id:"D",name:"Rahimovlar xo'jaligi",area:"Guliston",radius:2,rating:4.2,n:8,products:[PS("Sut",6,6,12500)]},
+{id:"E",name:"Toshmatovlar xo'jaligi",area:"Qorasuv",radius:6,rating:4.5,n:15,products:[PS("Sut",10,15,13000)]},
+{id:"F",name:"Yusupovlar xo'jaligi",area:"Do'stlik",radius:5,rating:3.9,n:5,products:[PS("Sut",4,5,16500)]},
+{id:"G",name:"Nazarovlar xo'jaligi",area:"Navbahor",radius:8,rating:4.7,n:26,products:[PS("Sut",9,10,12000)]}];
+/* ===== 1-BOSQICH: konfiguratsiya, rollar, audit, to'lovlar (backendga ko'chirishga tayyor tuzilma) ===== */
+const CONFIG={platformCommission:0,currency:"so'm",paymentPeriodDays:7,paymentProvider:"manual",deliveryGapMin:{supplier:40,pickup:20}}; // komissiya 0%: supplier to'liq summani oladi
+const ROLES=["business","supplier","admin"]; // admin oddiy interfeysda ko'rinmaydi, faqat alohida #admin kirish orqali
+/* DEMO ONLY. Login va parolni frontend kodida saqlash real production uchun XAVFSIZ EMAS: kod hammaga ochiq.
+   Production: server tomonida autentifikatsiya, parol xeshi (argon2/bcrypt), httpOnly sessiya yoki JWT,
+   2FA, urinishlar limiti va serverdagi rol tekshiruvi (admin API faqat admin roliga ochiq). */
+const ADMIN_DEMO={username:"admin",password:"admin123"};
+const dm=s=>s.split("-").reverse().join(".");
+const dt=s=>{const d=new Date(s);return pad(d.getDate())+"."+pad(d.getMonth()+1)+"."+d.getFullYear()+" "+pad(d.getHours())+":"+pad(d.getMinutes())};
+/* audit_log yozuvi: {id,ts,actor,role,action,type,oid,desc} */
+const mkA=(s,ts,actor,role,action,type,oid,desc)=>{s.nextAud=s.nextAud||1;s.audit.push({id:"AUD-"+s.nextAud++,ts,actor,role,action,type,oid,desc});if(s.audit.length>500)s.audit.shift()};
+const audit=(actor,role,action,type,oid,desc)=>mkA(S,new Date().toISOString(),actor,role,action,type,oid,desc);
+/* ===== 2-BOSQICH: Payment va Contract arxitekturasi. SutBozor pul ushlamaydi, komissiya olmaydi: faqat to'lovni hisoblaydi va qayd qiladi (Business → Supplier) ===== */
+const PAYL={DELIVERY:"Yetkazilganda to'lash",WEEKLY:"Haftalik to'lov",MONTHLY:"Oylik to'lov",PREPAID:"Oldindan to'lov"};
+const PT={PENDING:["Kutilmoqda","w"],PAYMENT_SUBMITTED:["Tasdiqlash kutilmoqda","w"],PAID:["To'langan",""],OVERDUE:["Kechikkan","x"],CANCELLED:["Bekor qilingan","n"],DISPUTED:["Nizoli","x"]};
+const CST={DRAFT:["Qoralama","n"],PENDING:["Kutilmoqda","w"],ACTIVE:["Faol",""],PAUSED:["To'xtatilgan","w"],COMPLETED:["Yakunlangan",""],CANCELLED:["Bekor qilingan","x"]};
+const ctag=st=>`<span class="tag ${CST[st][1]}">${CST[st][0]}</span>`;
+const payState=x=>x.status;
+const today=()=>new Date().toISOString().slice(0,10);
+const addD=(d,n)=>new Date(Date.parse(d)+n*864e5).toISOString().slice(0,10);
+const fee=a=>Math.round(a*CONFIG.platformCommission/100); // platformCommission=0, shuning uchun grossAmount = supplierAmount
+/* Provider interfeysi: {name, methods[], initiate(payment)->{ref,redirectUrl}, verify(payment,data)->{ok,transactionId}}.
+   Click/Payme/Uzum keyinchalik shu interfeys bilan ulanadi va CONFIG.paymentProvider almashtiriladi. UI va PaymentService o'zgarmaydi. */
+const stub=n=>({name:n,methods:[n],initiate(){throw Error(n+" hali ulanmagan")},verify(){throw Error(n+" hali ulanmagan")}});
+const PaymentProviders={manual:{name:"Qo'lda kiritish (gateway yo'q)",methods:["Naqd","Bank o'tkazmasi","Karta → karta"],initiate:()=>({ref:null}),verify:(p,d)=>({ok:true,transactionId:d.tx})},click:stub("Click"),payme:stub("Payme"),uzum:stub("Uzum")};
+const PaymentService={
+get provider(){return PaymentProviders[CONFIG.paymentProvider]},
+/* davrga bo'lish: oxirgi davr qoldiqni oladi (30 kun haftalik: 1-7, 8-14, 15-21, 22-30) */
+buildSchedule(days,daily,pay){
+  if(pay==="DELIVERY")return[{seq:1,fromDay:1,toDay:1,days:1,amount:daily}];
+  if(pay==="PREPAID")return[{seq:1,fromDay:1,toDay:days,days,amount:daily*days}];
+  const size=pay==="MONTHLY"?30:7,n=Math.max(1,Math.floor(days/size)),r=[];
+  for(let k=0;k<n;k++){const f=k*size+1,t=k===n-1?days:(k+1)*size;r.push({seq:k+1,fromDay:f,toDay:t,days:t-f+1,amount:(t-f+1)*daily})}
+  return r},
+contract(s,o,p,start,st){const c={id:"CT-"+s.nextCt++,orderId:o.id,businessId:o.businessId||"BZ-1",supplierId:p.sup,product:o.product,quantityPerDay:p.qty,unit:CAT[o.product],pricePerUnit:p.price,days:o.days,startDate:start,endDate:addD(start,o.days-1),paymentSchedule:o.pay,deliveryMode:o.mode,status:st,createdAt:o.created,activated:["ACTIVE","PAUSED","COMPLETED"].includes(st)};
+  s.contracts.push(c);p.contractId=c.id;mkA(s,o.created,"Tizim","system","contract.create","contract",c.id,o.id+" / Supplier "+p.sup+": shartnoma yaratildi");return c},
+make(s,o,p,c,z,due,paid){const tot=p.qty*p.price*o.days;if(!(z.amount>=0)||z.amount>tot+.5||s.pay.filter(y=>y.contractId===c.id).reduce((a,y)=>a+y.amount,0)+z.amount>tot+.5)throw Error("To'lov summasi buyurtma summasidan oshib ketdi.");const now=new Date().toISOString(),f=fee(z.amount),x={id:"PAY-"+s.nextPay++,orderId:o.id,contractId:c.id,businessId:o.businessId||"BZ-1",supplierId:p.sup,amount:z.amount,currency:CONFIG.currency,paymentPeriod:o.pay,dueDate:due,paidAt:paid?due:null,paymentMethod:paid?"Bank o'tkazmasi":null,transactionId:paid?"TX-"+s.nextPay:null,status:paid?"PAID":"PENDING",note:"",createdAt:now,updatedAt:now,
+  seq:z.seq,label:z.fromDay===z.toDay?z.fromDay+"-kun":z.fromDay+"–"+z.toDay+" kun",fromDay:z.fromDay,toDay:z.toDay,days:z.days,platformCommission:f,grossAmount:z.amount,supplierAmount:z.amount-f};
+  s.pay.push(x);return x},
+schedule(s,o,p,c,start,paidN){if(o.pay==="DELIVERY")return;const sch=this.buildSchedule(o.days,p.qty*p.price,o.pay);
+  sch.forEach(z=>this.make(s,o,p,c,z,o.pay==="PREPAID"?start:addD(start,z.toDay),z.seq<=paidN));
+  mkA(s,new Date().toISOString(),"Tizim","system","payment.schedule","contract",c.id,PAYL[o.pay]+": "+sch.length+" ta to'lov yaratildi")},
+onDelivered(s,o,p,day){if(o.pay!=="DELIVERY")return;const c=s.contracts.find(x=>x.id===p.contractId);if(!c)return;
+  const x=this.make(s,o,p,c,{seq:day,fromDay:day,toDay:day,days:1,amount:p.qty*p.price},today(),false);mkA(s,x.createdAt,"Tizim","system","payment.created","payment",x.id,o.id+": "+day+"-kun yetkazildi, to'lov yaratildi")},
+note(x,t){const o=S.orders.find(y=>y.id===x.orderId);if(o){o.log.push(nowT()+" "+t);o.updated=new Date().toISOString()}},
+/* shartnoma holatini sinxronlash, jadval yaratish, bekor qilish va avtomatik OVERDUE */
+sync(){const now=today(),ts=new Date().toISOString();
+  S.orders.forEach(o=>o.parts.forEach(p=>{const c=S.contracts.find(x=>x.id===p.contractId);if(!c)return;const st=p.st==="SENT"?"PENDING":p.st;if(c.status===st)return;
+    c.status=st;audit("Tizim","system","contract.status","contract",c.id,"Holat: "+CST[st][0]);
+    if(st==="ACTIVE"&&!c.activated){c.activated=true;c.startDate=now;c.endDate=addD(now,o.days-1);this.schedule(S,o,p,c,now,0)}
+    if(st==="CANCELLED")S.pay.forEach(x=>{if(x.contractId===c.id&&(x.status==="PENDING"||x.status==="OVERDUE")){x.status="CANCELLED";x.updatedAt=ts;audit("Tizim","system","payment.cancelled","payment",x.id,"Shartnoma bekor qilindi")}})}));
+  S.pay.forEach(x=>{
+    if(x.status==="PENDING"&&x.dueDate<now){x.status="OVERDUE";x.updatedAt=ts;audit("Tizim","system","payment.overdue","payment",x.id,x.orderId+": muddat o'tdi ("+dm(x.dueDate)+")");[Notify.biz(x.businessId),Notify.sup(x.supplierId)].forEach(t=>Notify.send(t,"payment.overdue","To'lov kechikdi",x.orderId+" #"+x.seq+": "+fmt(x.amount)+" so'm"))}
+    else if(x.status==="PENDING"&&!x.soon&&x.dueDate<=addD(now,2)){x.soon=true;Notify.send(Notify.biz(x.businessId),"payment.due","To'lov muddati yaqin",x.orderId+" #"+x.seq+": "+fmt(x.amount)+" so'm, muddat "+dm(x.dueDate))}})},
+/* Business: PENDING | OVERDUE | DISPUTED → PAYMENT_SUBMITTED. Validatsiya xatosi matn qaytaradi, ruxsat xatosi Error tashlaydi */
+submit(id,d){const u=Auth.require("payments.submit"),x=S.pay.find(y=>y.id===id);
+  if(!x||x.businessId!==u.businessId)return"To'lov topilmadi.";
+  if(!["PENDING","OVERDUE","DISPUTED"].includes(x.status))return"Bu to'lovni hozir yuborib bo'lmaydi.";
+  if(Number(d.amount)!==x.amount)return"Summa "+fmt(x.amount)+" so'mga teng bo'lishi kerak.";
+  if(!this.provider.methods.includes(d.method))return"To'lov usulini tanlang.";
+  if(!String(d.tx).trim())return"Transaction ID kiriting.";
+  if(!d.date||d.date>today())return"To'lov sanasi noto'g'ri.";
+  Object.assign(x,{status:"PAYMENT_SUBMITTED",paymentMethod:d.method,transactionId:String(d.tx).trim().slice(0,60),claimedAt:d.date,note:String(d.note).trim().slice(0,300),updatedAt:new Date().toISOString()});
+  auditU(u,"payment.submitted","payment",x.id,"Payment "+x.id+" uchun \"To'lov qildim\" yubordi: "+fmt(x.amount)+" so'm, "+x.paymentMethod+", "+x.transactionId);
+  Notify.send(Notify.sup(x.supplierId),"payment.submitted","To'lov amalga oshirildi",x.orderId+" #"+x.seq+": "+fmt(x.amount)+" so'm, tasdiqlang");
+  this.note(x,"Biznes: "+x.seq+"-to'lov yuborildi (Supplier "+x.supplierId+")");return""},
+/* Supplier: PAYMENT_SUBMITTED → PAID */
+confirm(id){const u=Auth.require("payments.confirm"),x=S.pay.find(y=>y.id===id);if(!x||x.supplierId!==u.supplierId)throw Error("To'lov topilmadi.");if(x.status!=="PAYMENT_SUBMITTED")throw Error("Tasdiqlash uchun to'lov yuborilgan bo'lishi kerak.");
+  x.status="PAID";x.paidAt=x.claimedAt||today();x.updatedAt=new Date().toISOString();
+  auditU(u,"payment.paid","payment",x.id,x.orderId+": "+fmt(x.supplierAmount)+" so'm to'lovi tasdiqlandi");Notify.send(Notify.biz(x.businessId),"payment.confirmed","To'lov tasdiqlandi",x.orderId+" #"+x.seq+" Supplier tomonidan tasdiqlandi");this.note(x,"Supplier "+x.supplierId+": "+x.seq+"-to'lov tasdiqlandi")},
+/* Supplier "Pul kelmadi": nizo yozuvi ochadi, to'lov DISPUTED bo'ladi */
+dispute(id){const x=S.pay.find(y=>y.id===id);if(!x||x.status!=="PAYMENT_SUBMITTED")throw Error("Nizo uchun to'lov yuborilgan bo'lishi kerak.");
+  return DisputeService.open({orderId:x.orderId,paymentId:x.id,reason:"PAYMENT",description:"Pul kelmadi (Supplier xabari)"})}
+};
+const sync=()=>PaymentService.sync();
+/* ===== 3-BOSQICH: Authentication → User → Role → Permission. Bu tekshiruv FRONTENDDA faqat demo. Backendda har bir endpoint shu qoidani serverda qayta tekshiradi ===== */
+const ROLE_PERMS={
+admin:["dashboard.view","orders.view","payments.view","payments.manage","contracts.view","contracts.manage","businesses.view","suppliers.view","disputes.manage","audit.view","settings.manage","users.manage"],
+business:["market.view","orders.create","orders.view","payments.view","payments.submit","contracts.create","profile.manage","disputes.create"],
+supplier:["products.manage","orders.view","orders.accept","orders.reject","delivery.update","payments.view","payments.confirm","contracts.view","disputes.create","profile.manage"]};
+const auditU=(u,action,type,oid,desc)=>audit(u.name,u.role,action,type,oid,desc);
+/* Auth: hozirgi foydalanuvchi va ruxsat. Kelajakda current() JWT/session'dan user oladi, login() serverga almashadi */
+const Auth={ctx:"app",
+ current(){if(this.ctx==="admin"){let id=null;try{id=sessionStorage.getItem("sb-admin")}catch(e){}const u=S.users.find(x=>x.id===id);return u&&u.role==="admin"?u:null}return S.users.find(x=>x.id===S.uid)||null},
+ can(perm,u){u=u||this.current();return!!u&&u.status==="ACTIVE"&&(ROLE_PERMS[u.role]||[]).includes(perm)},
+ require(perm){const u=this.current();if(!this.can(perm,u)){audit(u?u.name:"anonim",u?u.role:"system","permission.denied","permission",perm,"Ruxsat rad etildi: "+perm);throw new Error(!u?"Kirish talab qilinadi.":u.status!=="ACTIVE"?"Hisobingiz faol emas ("+u.status+"), harakat mumkin emas.":"Ruxsat yo'q: "+perm)}return u},
+ login(uid){const u=S.users.find(x=>x.id===uid);if(!u||u.role==="admin")return false;S.uid=u.id;S.role=u.role;if(u.supplierId)S.sup=u.supplierId;u.lastLoginAt=new Date().toISOString();audit(u.name,u.role,"auth.login","user",u.id,"Tizimga kirdi");return true}};
+function loginRole(r){const u=S.users.find(x=>x.role===r&&(r==="business"?x.businessId===S.biz.id:x.supplierId===S.sup));if(u)Auth.login(u.id);S.role=r}
+const mkUsers=s=>{const D=d=>new Date(Date.now()-d*864e5).toISOString(),H=h=>h===null?null:new Date(Date.now()-h*36e5).toISOString(),u=(id,name,phone,email,role,bid,sid,st,d,h)=>s.users.push({id,name,phone,email,role,businessId:bid,supplierId:sid,status:st,createdAt:D(d),lastLoginAt:H(h)});
+  s.users=[];u("U-1","Bosh admin","+998 71 200 00 01","admin@sutbozor.uz","admin",null,null,"ACTIVE",120,1);u("U-2","Yordamchi admin","+998 71 200 00 02","admin2@sutbozor.uz","admin",null,null,"ACTIVE",80,48);
+  [s.biz].concat(s.demoBiz).forEach((b,i)=>u("U-"+(101+i),b.name+" egasi","+998 90 100 00 0"+(i+1),"biz"+(i+1)+"@sutbozor.uz","business",b.id,null,b.id==="BZ-4"?"BLOCKED":"ACTIVE",70-i*5,i*7+2));
+  s.sups.forEach((x,i)=>u("U-"+(201+i),x.name.replace(" xo'jaligi","")+" (supplier)","+998 93 200 00 0"+(i+1),"sup"+x.id.toLowerCase()+"@sutbozor.uz","supplier",null,x.id,x.id==="F"?"PENDING":"ACTIVE",60-i*4,i===5?null:i*5+3));
+  s.uid="U-101";s.notifs=[];s.nextN=1;s.nextD=s.nextD||1};
+function migrate3(s){s.ver=3;s.biz.id=s.biz.id||"BZ-1";s.orders.forEach(o=>{o.businessId=o.businessId||"BZ-1"});s.pay.forEach(x=>{x.businessId=x.businessId||"BZ-1"});s.contracts.forEach(c=>{c.businessId=c.businessId||"BZ-1"});
+  s.demoBiz=s.demoBiz||[];DEMO_BIZ.forEach(b=>{if(!s.demoBiz.some(x=>x.id===b.id))s.demoBiz.push({...b})});s.disputes=(s.disputes||[]).filter(d=>d.createdAt&&d.description!==undefined);s.nextD=s.nextD||1;mkUsers(s);if(s.role==="supplier"){const u=s.users.find(x=>x.supplierId===s.sup);if(u)s.uid=u.id}}
+const bizName=id=>id===S.biz.id?S.biz.name:(S.demoBiz.find(b=>b.id===id)||{name:id}).name;
+const supActive=id=>{const u=S.users.find(x=>x.role==="supplier"&&x.supplierId===id);return!u||u.status==="ACTIVE"}; // supplier faol = uning user'i ACTIVE
+const Notify={
+ add(s,userId,type,title,message,ts){s.nextN=s.nextN||1;s.notifs.push({id:"N-"+s.nextN++,userId,type,title,message,read:false,createdAt:ts||new Date().toISOString()});if(s.notifs.length>500)s.notifs.shift()},
+ send(userId,type,title,message){if(userId)this.add(S,userId,type,title,message)},
+ biz(bid){const u=S.users.find(x=>x.role==="business"&&x.businessId===bid);return u&&u.id},
+ sup(sid){const u=S.users.find(x=>x.role==="supplier"&&x.supplierId===sid);return u&&u.id},
+ admins(type,title,message){S.users.filter(x=>x.role==="admin").forEach(a=>this.send(a.id,type,title,message))},
+ unread(u){return S.notifs.filter(n=>n.userId===u.id&&!n.read).length}};
+const Validate={
+ qty:v=>Number.isFinite(v)&&v>0?"":"Miqdor 0 dan katta bo'lishi kerak.",
+ days:v=>Number.isInteger(v)&&v>=1&&v<=365?"":"Muddat 1–365 kun bo'lishi kerak.",
+ nonneg:(v,n)=>Number.isFinite(v)&&v>=0?"":n+" manfiy bo'lishi mumkin emas.",
+ supplier(id,prod){const x=sup(id);if(!x)return"Supplier topilmadi.";if(!supActive(id))return"Supplier faol emas: yangi buyurtma yuborib bo'lmaydi.";if(prod&&!x.products.some(p=>p.name===prod))return"Supplier bu mahsulotni sotmaydi.";return""}};
+const DREASONS={NOT_DELIVERED:"Mahsulot kelmadi",WRONG_QTY:"Miqdor noto'g'ri",QUALITY:"Sifat muammosi",PAYMENT:"To'lov muammosi",LATE:"Yetkazib berish kechikdi",PRICE:"Narx bo'yicha muammo",OTHER:"Boshqa"};
+const DSTT={OPEN:["Ochiq","w"],UNDER_REVIEW:["Ko'rib chiqilmoqda","w"],RESOLVED:["Hal qilindi",""],REJECTED:["Rad etildi","x"],CLOSED:["Yopilgan","n"]};
+const dtag=st=>`<span class="tag ${DSTT[st][1]}">${DSTT[st][0]}</span>`;
+const DisputeService={
+ open(f){const u=Auth.require("disputes.create"),o=S.orders.find(x=>x.id===f.orderId),isB=u.role==="business";
+  if(!o)throw Error("Buyurtmani tanlang.");
+  const parts=o.parts.filter(p=>isB?o.businessId===u.businessId:p.sup===u.supplierId);if(!parts.length)throw Error("Bu buyurtma sizniki emas.");
+  if(!DREASONS[f.reason])throw Error("Nizo sababini tanlang.");
+  if(String(f.description||"").trim().length<5)throw Error("Izohni kamida 5 belgi bilan yozing.");
+  let pay=null;if(f.paymentId){pay=S.pay.find(x=>x.id===f.paymentId);if(!pay||pay.orderId!==o.id||!parts.some(p=>p.sup===pay.supplierId))throw Error("To'lov topilmadi.")}
+  const sid=pay?pay.supplierId:parts[0].sup,part=o.parts.find(p=>p.sup===sid);
+  if(S.disputes.some(d=>["OPEN","UNDER_REVIEW"].includes(d.status)&&d.orderId===o.id&&d.paymentId===(pay?pay.id:null)&&d.openedById===u.id&&d.reason===f.reason))throw Error("Bu nizo allaqachon ochilgan.");
+  const d={id:"DSP-"+S.nextD++,orderId:o.id,paymentId:pay?pay.id:null,contractId:pay?pay.contractId:part.contractId||null,openedBy:u.role,openedById:u.id,businessId:o.businessId,supplierId:sid,reason:f.reason,description:String(f.description).trim().slice(0,500),status:"OPEN",createdAt:new Date().toISOString(),resolvedAt:null,resolution:null,resolvedBy:null};
+  S.disputes.push(d);if(pay&&["PENDING","PAYMENT_SUBMITTED","OVERDUE"].includes(pay.status)){pay.status="DISPUTED";pay.updatedAt=d.createdAt}
+  auditU(u,"dispute.open","dispute",d.id,o.id+" bo'yicha nizo ochdi: "+DREASONS[d.reason]);
+  Notify.send(isB?Notify.sup(sid):Notify.biz(o.businessId),"dispute.open","Nizo ochildi",d.id+" ("+o.id+"): "+DREASONS[d.reason]);Notify.admins("dispute.open","Yangi nizo",d.id+": "+DREASONS[d.reason]);return d},
+ setStatus(id,st,res){const u=Auth.require("disputes.manage"),d=S.disputes.find(x=>x.id===id);if(!d)throw Error("Nizo topilmadi.");
+  const ok={OPEN:["UNDER_REVIEW","REJECTED"],UNDER_REVIEW:["RESOLVED","REJECTED"],RESOLVED:["CLOSED"],REJECTED:["CLOSED"]};
+  if(!(ok[d.status]||[]).includes(st))throw Error("Nizo holatini "+d.status+" dan "+st+" ga o'tkazib bo'lmaydi.");
+  if((st==="RESOLVED"||st==="REJECTED")&&String(res||"").trim().length<3)throw Error("Yechim matnini kiriting.");
+  d.status=st;if(res)d.resolution=String(res).trim().slice(0,500);
+  if(st==="RESOLVED"||st==="REJECTED"){d.resolvedAt=new Date().toISOString();d.resolvedBy=u.name;
+    const pay=d.paymentId&&S.pay.find(x=>x.id===d.paymentId);if(pay&&pay.status==="DISPUTED"&&!S.disputes.some(x=>x!==d&&x.paymentId===pay.id&&["OPEN","UNDER_REVIEW"].includes(x.status))){pay.status=pay.claimedAt&&!pay.paidAt?"PAYMENT_SUBMITTED":"PENDING";pay.updatedAt=d.resolvedAt}
+    [Notify.biz(d.businessId),Notify.sup(d.supplierId)].forEach(x=>Notify.send(x,"dispute.resolved","Nizo hal qilindi",d.id+": "+DSTT[st][0]))}
+  auditU(u,"dispute."+st.toLowerCase(),"dispute",d.id,"Nizo "+d.id+" holati: "+DSTT[st][0]);return d}};
+const AdminService={
+ markPaid(id){const u=Auth.require("payments.manage"),x=S.pay.find(y=>y.id===id);if(!x)throw Error("To'lov topilmadi.");if(["PAID","CANCELLED"].includes(x.status))throw Error("Bu to'lov holatini o'zgartirib bo'lmaydi.");
+  x.status="PAID";x.paidAt=today();x.updatedAt=new Date().toISOString();auditU(u,"payment.paid","payment",x.id,"Payment "+x.id+" statusini PAID qildi");PaymentService.note(x,"Admin: "+x.seq+"-to'lov PAID qilindi");
+  [Notify.biz(x.businessId),Notify.sup(x.supplierId)].forEach(t=>Notify.send(t,"payment.confirmed","To'lov tasdiqlandi",x.orderId+" #"+x.seq+" admin tomonidan tasdiqlandi"))},
+ cancelPayment(id){const u=Auth.require("payments.manage"),x=S.pay.find(y=>y.id===id);if(!x)throw Error("To'lov topilmadi.");if(x.status==="PAID")throw Error("To'langan to'lovni bekor qilib bo'lmaydi.");if(x.status==="CANCELLED")throw Error("To'lov allaqachon bekor qilingan.");
+  x.status="CANCELLED";x.updatedAt=new Date().toISOString();auditU(u,"payment.cancelled","payment",x.id,"Payment "+x.id+" bekor qilindi")},
+ cancelContract(id){const u=Auth.require("contracts.manage"),c=S.contracts.find(x=>x.id===id);if(!c)throw Error("Shartnoma topilmadi.");if(["COMPLETED","CANCELLED"].includes(c.status))throw Error("Bu shartnomani o'zgartirib bo'lmaydi.");
+  const o=S.orders.find(x=>x.id===c.orderId),p=o&&o.parts.find(x=>x.contractId===c.id);if(p){p.st="CANCELLED";o.updated=new Date().toISOString()}else c.status="CANCELLED";
+  auditU(u,"contract.cancelled","contract",c.id,"Shartnoma "+c.id+" bekor qilindi");[Notify.biz(c.businessId),Notify.sup(c.supplierId)].forEach(t=>Notify.send(t,"contract.cancelled","Shartnoma bekor qilindi",c.id))},
+ setUser(id,st,confirmed){const u=Auth.require("users.manage"),t=S.users.find(x=>x.id===id);if(!t)throw Error("Foydalanuvchi topilmadi.");if(!["ACTIVE","BLOCKED"].includes(st))throw Error("Noto'g'ri status.");
+  if(t.id===u.id&&st!=="ACTIVE")throw Error("O'zingizni bloklab bo'lmaydi.");
+  if(!confirmed)throw Error("Tasdiqlash talab qilinadi.");
+  if(t.role==="admin"&&st==="BLOCKED"&&!S.users.some(x=>x.role==="admin"&&x.status==="ACTIVE"&&x.id!==t.id))throw Error("Oxirgi faol adminni bloklab bo'lmaydi.");
+  t.status=st;auditU(u,"user."+st.toLowerCase(),"user",t.id,t.name+" statusi "+st+" qilindi")}};
+const log=(o,who,t)=>{o.log.push(nowT()+" "+who+": "+t);o.updated=new Date().toISOString();audit(who,who.indexOf("Biznes")===0?"business":who.indexOf("Supplier")===0?"supplier":"system","order.event","order",o.id,t)};
+const DEMO_BIZ=[{id:"BZ-2",name:"Shirin qandolatchilik",type:"Qandolatchilik",area:"Guliston",addr:"Guliston, Bog' ko'chasi 5",rating:4.6,n:11},{id:"BZ-3",name:"Bahor kafesi",type:"Kafe",area:"Do'stlik",addr:"Do'stlik, Markaz ko'chasi 2",rating:4.4,n:8},{id:"BZ-4",name:"Ilhom restorani",type:"Restoran",area:"Ziyokor",addr:"Ziyokor, Navoiy ko'chasi 7",rating:4.3,n:14},{id:"BZ-5",name:"Sog'lom bog'cha oshxonasi",type:"Bog'cha",area:"Oqtepa",addr:"Oqtepa, Yoshlar ko'chasi 1",rating:4.8,n:6}];
+function demo(s){
+  s.audit=[];s.pay=[];s.contracts=[];s.nextCt=1001;s.disputes=[];s.nextPay=1;s.nextAud=1;s.demoBiz=JSON.parse(JSON.stringify(DEMO_BIZ));mkUsers(s);s.ver=3;
+  const ago=d=>new Date(Date.now()-d*864e5).toISOString();
+  const mk=(id,product,qty,days,mode,d,parts,pay,biz)=>{
+    const o={id,created:ago(d),updated:ago(Math.max(0,d-1)),product,qty,days,mode,pay:pay||"WEEKLY",businessId:biz||"BZ-1",prep:"06:30",log:["Biznes: Buyurtma yaratildi"],parts:[]};
+    mkA(s,o.created,s.biz.name,"business","order.create","order",id,"Buyurtma yaratildi");
+    parts.forEach(x=>{const p={sup:x[0],qty:x[1],price:x[2],st:x[3],day:x[4],dl:x[5]||"SCHEDULED",r:{}};o.parts.push(p);const c=PaymentService.contract(s,o,p,ago(d).slice(0,10),x[3]==="SENT"?"PENDING":x[3]==="CANCELLED"&&x[6]!==undefined?"ACTIVE":x[3]);
+      if(x[3]==="ACTIVE"||x[3]==="COMPLETED"||(x[3]==="CANCELLED"&&x[6]!==undefined)){o.log.push("Supplier "+p.sup+": Qismni qabul qildi");mkA(s,ago(d-.1),"Supplier "+p.sup,"supplier","order.event","order",id,"Qismni qabul qildi");PaymentService.schedule(s,o,p,c,ago(d).slice(0,10),x[6]||0)}});
+    s.orders.push(o)};
+  mk("SB-1001","Sut",20,30,"supplier",12,[["A",12,13500,"ACTIVE",12,"PREPARING",1],["B",8,14000,"ACTIVE",12,"SCHEDULED",0]]);
+  mk("SB-1002","Qatiq",4,14,"pickup",1,[["A",4,16000,"SENT",0]],"PREPAID");
+  mk("SB-1003","Sut",10,30,"supplier",3,[["C",10,14500,"ACTIVE",3,"READY",0]],"MONTHLY");
+  mk("SB-1004","Tvorog",3,7,"pickup",10,[["B",3,45000,"COMPLETED",7,"SCHEDULED",1]]);
+  mk("SB-1005","Sut",15,30,"supplier",20,[["E",15,13000,"ACTIVE",20,"SCHEDULED",2]],"WEEKLY","BZ-2");
+  mk("SB-1006","Sut",10,14,"pickup",16,[["G",10,12000,"COMPLETED",14,"SCHEDULED",2]],"WEEKLY","BZ-3");
+  mk("SB-1007","Qatiq",5,30,"supplier",9,[["A",5,16000,"ACTIVE",9,"IN_TRANSIT",0]],"PREPAID","BZ-4");
+  mk("SB-1008","Sut",8,30,"supplier",2,[["D",6,12500,"SENT",0],["C",2,14500,"SENT",0]],"MONTHLY","BZ-5");
+  mk("SB-1009","Tvorog",2,21,"pickup",6,[["B",2,45000,"CANCELLED",0,"SCHEDULED",0]],"WEEKLY","BZ-2");
+  mk("SB-1010","Sut",12,30,"supplier",5,[["G",12,12000,"ACTIVE",5,"PREPARING",0]],"WEEKLY","BZ-3");
+  mk("SB-1011","Sariyog'",1,60,"pickup",40,[["C",1,95000,"ACTIVE",40,"SCHEDULED",0]],"MONTHLY","BZ-4");
+  const pB=s.pay.find(x=>x.orderId==="SB-1001"&&x.supplierId==="B"&&x.seq===1);pB.status="DISPUTED";
+  const pS=s.pay.find(x=>x.orderId==="SB-1003"&&x.seq===1);if(pS&&pS.status==="PENDING")Object.assign(pS,{status:"PAYMENT_SUBMITTED",paymentMethod:"Bank o'tkazmasi",transactionId:"TX-3301",claimedAt:today(),note:"Oldindan o'tkazildi",updatedAt:new Date().toISOString()}); // demo: supplier tasdiqlashi kutilmoqda
+  const dd=(id,o,pay,by,byId,bid,sid,r,t,st,ag,res)=>s.disputes.push({id,orderId:o,paymentId:pay?pay.id:null,contractId:pay?pay.contractId:(s.orders.find(x=>x.id===o).parts.find(p=>p.sup===sid)||{}).contractId||null,openedBy:by,openedById:byId,businessId:bid,supplierId:sid,reason:r,description:t,status:st,createdAt:ago(ag),resolvedAt:res?ago(ag-1):null,resolution:res||null,resolvedBy:res?"Bosh admin":null});
+  dd("DSP-1","SB-1001",pB,"supplier","U-202","BZ-1","B","PAYMENT","1-hafta to'lovi muddatida kelmadi","OPEN",4);
+  dd("DSP-2","SB-1006",null,"business","U-103","BZ-3","G","QUALITY","Sut sifati past edi, kislotaligi yuqori","RESOLVED",8,"Supplier keyingi partiyani almashtirdi, nizo hal qilindi");
+  dd("DSP-3","SB-1007",null,"business","U-104","BZ-4","A","LATE","Yetkazib berish 2 soat kechikdi","UNDER_REVIEW",2);
+  s.nextD=4;
+  [["U-101","order.accepted","Buyurtma qabul qilindi","SB-1001 / Supplier A"],["U-101","payment.due","To'lov muddati yaqin","SB-1001: 2-hafta to'lovi"],["U-201","order.new","Yangi buyurtma","SB-1008: 6 L/kun"],["U-202","payment.submitted","To'lov amalga oshirildi","SB-1001 / Supplier B"],["U-1","dispute.open","Yangi nizo","DSP-1: To'lov muammosi"]].forEach(n=>Notify.add(s,n[0],n[1],n[2],n[3]));
+  s.next=1012;return s;
+}
+function migrate(s){ // eski saqlangan ma'lumotni yangi tuzilmaga o'tkazish
+  Object.assign(s,{audit:[],pay:[],disputes:[],nextPay:1,nextAud:1,demoBiz:JSON.parse(JSON.stringify(DEMO_BIZ))});
+  s.orders.forEach(o=>{o.created=o.created||new Date().toISOString();o.updated=o.updated||o.created;});
+}
+function migrate2(s){ // 1-bosqich ma'lumotini Contract + yangi Payment tuzilmasiga o'tkazish
+  const old=s.pay||[];s.pay=[];s.contracts=[];s.nextCt=1001;s.nextPay=1;
+  s.orders.forEach(o=>{o.pay=o.pay||"WEEKLY";o.parts.forEach(p=>{const st=p.st==="SENT"?"PENDING":p.st,start=o.created.slice(0,10),c=PaymentService.contract(s,o,p,start,st),ol=old.filter(x=>x.order===o.id&&x.sup===p.sup);
+    if(ol.length)ol.forEach(x=>{const f=(x.week-1)*7+1,y=PaymentService.make(s,o,p,c,{seq:x.week,fromDay:f,toDay:f+x.days-1,days:x.days,amount:x.amount},x.due,!!x.paidAt);y.paidAt=x.paidAt||null;y.paymentMethod=x.paidAt?"Bank o'tkazmasi":null});
+    else if(c.activated)PaymentService.schedule(s,o,p,c,start,0)})});
+}
+const banner=()=>{const u=Auth.current();return(u&&u.status!=="ACTIVE"?`<div class="card"><p class="msg" role="alert">Hisobingiz (${esc(u.name)}) ${u.status==="BLOCKED"?"bloklangan":"hali tasdiqlanmagan"}: harakatlar cheklangan.</p></div>`:"")+(BN?`<div class="card"><p class="msg" role="alert">${esc(BN)}</p></div>`:"")};
+let DF={orderId:"",paymentId:"",reason:"NOT_DELIVERED",description:""};
+function vDisp(){const R=S.role,ords=S.orders.filter(o=>R==="business"?o.businessId===S.biz.id:o.parts.some(p=>p.sup===S.sup));
+  if(!ords.some(o=>o.id===DF.orderId)){DF.orderId=ords[0]?ords[0].id:"";DF.paymentId=""}
+  const pays=S.pay.filter(x=>x.orderId===DF.orderId&&(R==="business"||x.supplierId===S.sup)),mine=S.disputes.filter(d=>R==="business"?d.businessId===S.biz.id:d.supplierId===S.sup).slice().reverse();
+  return `<div class="card"><h2>Nizo ochish</h2><div class="grid"><label>Buyurtma<select data-df="orderId">${ords.map(o=>`<option value="${o.id}"${o.id===DF.orderId?" selected":""}>${o.id}: ${esc(o.product)}</option>`).join("")}</select></label><label>To'lov (ixtiyoriy)<select data-df="paymentId"><option value="">—</option>${pays.map(x=>`<option value="${x.id}"${x.id===DF.paymentId?" selected":""}>#${x.seq} ${fmt(x.amount)} so'm (${PT[x.status][0]})</option>`).join("")}</select></label><label>Sabab<select data-df="reason">${Object.keys(DREASONS).map(k=>`<option value="${k}"${k===DF.reason?" selected":""}>${DREASONS[k]}</option>`).join("")}</select></label></div><label style="margin-top:10px">Tavsif<textarea data-df="description" maxlength="500">${esc(DF.description)}</textarea></label><div class="acts"><button class="btn p" data-act="dsub">Nizo ochish</button></div></div>
+<div class="card"><h2>Nizolarim (${mine.length})</h2>${mine.map((d,i)=>`<div class="row${i?"":" f"}"><div><b>${d.id}: ${DREASONS[d.reason]}</b><small>${d.orderId}${d.paymentId?" · "+d.paymentId:""} · ${esc(d.description)} · ${dt(d.createdAt)}${d.resolution?" · Yechim: "+esc(d.resolution):""}</small></div>${dtag(d.status)}</div>`).join("")||"<p class='hint'>Nizo yo'q.</p>"}</div>`}
+function vNotif(){const u=Auth.current(),l=S.notifs.filter(n=>u&&n.userId===u.id).slice().reverse();
+  return `<div class="card"><div class="hd"><h2 style="margin:0">Bildirishnomalar (${l.length})</h2><button class="btn" data-act="nread">Hammasini o'qilgan qilish</button></div>${l.map(n=>`<div class="row"><div><b>${n.read?"":"● "}${esc(n.title)}</b><small>${esc(n.message)} · ${dt(n.createdAt)}</small></div></div>`).join("")||"<p class='hint'>Bildirishnoma yo'q.</p>"}</div>`}
+function vSContracts(){const l=S.contracts.filter(c=>c.supplierId===S.sup&&c.status!=="DRAFT").slice().reverse();
+  return `<div class="card"><h2>Shartnomalar (${l.length})</h2>${l.map((c,i)=>`<div class="row${i?"":" f"}"><div><b>${c.id}: ${esc(bizName(c.businessId))}</b><small>${esc(c.product)} ${nm(c.quantityPerDay)} ${c.unit}/kun × ${fmt(c.pricePerUnit)} so'm · ${c.days} kun · ${PAYL[c.paymentSchedule]} · ${c.orderId||""}</small></div>${ctag(c.status)}</div>`).join("")||"<p class='hint'>Shartnoma yo'q.</p>"}</div>`}
+const sbox=(l,v,c)=>`<div class="${c}" style="border-radius:12px;padding:10px"><small>${l}</small><br><b>${v}</b></div>`;
+const payRow=(x,role)=>{const b=role==="business",sp=role==="supplier",m=x.paymentMethod?" · "+esc(x.paymentMethod)+(x.transactionId?" · "+esc(x.transactionId):""):"";
+  return `<div class="row"><div><b>#${x.seq} — ${x.label}, ${b?"Supplier "+x.supplierId+": "+esc(sup(x.supplierId).name):esc(bizName(x.businessId))}</b><small>${x.orderId} · ${x.contractId} · muddat ${dm(x.dueDate)}${m}${x.note?" · "+esc(x.note):""}</small><br><small>${fmt(sp?x.supplierAmount:x.amount)} so'm · komissiya ${x.platformCommission} so'm · jami ${fmt(x.amount)} so'm</small></div><div class="acts" style="margin:0">${ptg(x.status)}${b&&["PENDING","OVERDUE","DISPUTED"].includes(x.status)?`<button class="btn p" data-act="pfm" data-pid="${x.id}">To'lov qildim</button>`:""}${sp&&x.status==="PAYMENT_SUBMITTED"?`<button class="btn p" data-act="pconf" data-pid="${x.id}">To'lovni tasdiqlash</button><button class="btn d" data-act="pdisp" data-pid="${x.id}">Pul kelmadi</button>`:""}</div></div>`};
+const payRows=o=>{const l=S.pay.filter(x=>x.orderId===o.id),u=unit(o);
+  const hd=live(o).map(p=>{const d=p.qty*p.price,z=PaymentService.buildSchedule(o.days,d,o.pay)[0];return `<p class="hint" style="margin:4px 0">Supplier ${p.sup}: ${nm(p.qty)} ${u}/kun × ${fmt(p.price)} so'm = ${fmt(d)} so'm/kun. ${z.days} kunlik to'lov: ${fmt(z.amount)} so'm. Platforma komissiyasi: ${fee(z.amount)} so'm. Jami: ${fmt(z.amount)} so'm.</p>`}).join("");
+  return `<div class="acts"><button class="btn s" data-act="dopen" data-oid="${o.id}">Nizo ochish</button></div><h3 style="font-size:16px;margin:14px 0 2px">To'lovlar</h3><p class="hint">To'lov davri: ${PAYL[o.pay||"WEEKLY"]}</p>${hd}${l.map(x=>payRow(x,"business")).join("")||`<p class="hint">${o.pay==="DELIVERY"?"Har bir yetkazishdan keyin to'lov yaratiladi.":"To'lov jadvali Supplier qabul qilgach avtomatik yaratiladi."}</p>`}`};
+function payForm(){const x=S.pay.find(y=>y.id===PF.id);if(!x){PF=null;return""}
+  return `<div class="card"><h2>To'lov qildim: ${x.orderId}, #${x.seq}</h2><p class="hint">Supplier ${x.supplierId} ga to'g'ridan-to'g'ri to'lang, so'ng ma'lumotni kiriting. SutBozor pulni qabul qilmaydi, faqat qayd qiladi.</p><div class="grid" style="margin-top:10px"><label>Summa (so'm)<input type="number" data-pf="amount" value="${esc(PF.amount)}"></label><label>To'lov usuli<select data-pf="method">${PaymentService.provider.methods.map(m=>`<option${m===PF.method?" selected":""}>${esc(m)}</option>`).join("")}</select></label><label>Transaction ID<input data-pf="tx" maxlength="60" value="${esc(PF.tx)}"></label><label>To'lov sanasi<input type="date" data-pf="date" max="${today()}" value="${PF.date}"></label></div><label style="margin-top:10px">Izoh<textarea data-pf="note" maxlength="300">${esc(PF.note)}</textarea></label><p class="msg" role="alert">${esc(msg)}</p><div class="acts"><button class="btn p" data-act="pfsub">Yuborish</button><button class="btn" data-act="pfcancel">Bekor qilish</button></div></div>`}
+function vBPay(){const l=S.pay.filter(x=>x.businessId===S.biz.id).reverse(),k=(...t)=>fmt(l.filter(x=>t.includes(x.status)).reduce((a,x)=>a+x.amount,0))+" so'm";
+  return `<div class="card"><h2>To'lovlar</h2><div class="grid">${sbox("Kutilmoqda",k("PENDING"),"cap")}${sbox("Tasdiqlash kutilmoqda",k("PAYMENT_SUBMITTED"),"cap")}${sbox("To'langan",k("PAID"),"now")}${sbox("Kechikkan",k("OVERDUE"),"cap")}</div><p class="hint">Platforma komissiyasi: ${CONFIG.platformCommission}%. To'lov Business → Supplier to'g'ridan-to'g'ri amalga oshadi, SutBozor pulni ushlab turmaydi.</p></div><div class="card">${l.map(x=>payRow(x,"business")).join("")||"<p>Hozircha to'lov yo'q. Supplier buyurtmani qabul qilgach jadval yaratiladi.</p>"}</div>`}
+function vSPay(){const l=S.pay.filter(x=>x.supplierId===S.sup).reverse(),k=f=>fmt(l.filter(f).reduce((a,x)=>a+x.supplierAmount,0))+" so'm",cur=l.filter(x=>x.status!=="PAID"&&x.status!=="CANCELLED"),his=l.filter(x=>x.status==="PAID"||x.status==="CANCELLED");
+  return `<div class="card"><h2>To'lovlar</h2><div class="grid">${sbox("Kutilayotgan summa",k(x=>x.status==="PENDING"||x.status==="PAYMENT_SUBMITTED"),"cap")}${sbox("To'langan summa",k(x=>x.status==="PAID"),"now")}${sbox("Kechikkan summa",k(x=>x.status==="OVERDUE"),"cap")}</div><p class="hint">Platforma komissiyasi: ${CONFIG.platformCommission}%, summa to'liq sizniki. Pulni Business to'g'ridan-to'g'ri o'tkazadi, kelganini tasdiqlang.</p></div><div class="card"><h2>Joriy to'lovlar (${cur.length})</h2>${cur.map(x=>payRow(x,"supplier")).join("")||"<p class='hint'>Joriy to'lov yo'q.</p>"}</div><div class="card"><h2>To'lov tarixi (${his.length})</h2>${his.map(x=>payRow(x,"supplier")).join("")||"<p class='hint'>Tarix bo'sh.</p>"}</div>`}
+let CF={sup:"A",product:"Sut",qty:20,days:30,pay:"WEEKLY",mode:"supplier"};
+function newDraft(){const pr=sup(CF.sup).products.find(x=>x.name===CF.product),c={id:"CT-"+S.nextCt++,orderId:null,businessId:S.biz.id,supplierId:CF.sup,product:CF.product,quantityPerDay:CF.qty,unit:CAT[CF.product],pricePerUnit:pr.price,days:CF.days,startDate:today(),endDate:addD(today(),CF.days-1),paymentSchedule:CF.pay,deliveryMode:CF.mode,status:"DRAFT",createdAt:new Date().toISOString(),activated:false};
+  S.contracts.push(c);audit(S.biz.name,"business","contract.create","contract",c.id,"Qoralama: Supplier "+c.supplierId+", "+c.product);return c}
+function sendContract(c){const er=Validate.supplier(c.supplierId,c.product)||Validate.qty(c.quantityPerDay)||Validate.nonneg(c.pricePerUnit,"Narx");if(er)throw Error(er);const now=new Date().toISOString(),o={id:"SB-"+S.next++,created:now,updated:now,product:c.product,qty:c.quantityPerDay,days:c.days,mode:c.deliveryMode,prep:S.q.prep,pay:c.paymentSchedule,businessId:S.biz.id,log:[],parts:[{sup:c.supplierId,qty:c.quantityPerDay,price:c.pricePerUnit,st:"SENT",day:0,dl:"SCHEDULED",r:{},contractId:c.id}]};
+  S.orders.unshift(o);c.orderId=o.id;c.status="PENDING";log(o,"Biznes","Shartnoma "+c.id+" yaratildi va Supplier "+c.supplierId+" ga yuborildi");Notify.send(Notify.sup(c.supplierId),"order.new","Yangi buyurtma",o.id+": "+nm(c.quantityPerDay)+" "+c.unit+"/kun ("+c.id+")")}
+function vContracts(){
+  const s=sup(CF.sup),pr=s.products.find(p=>p.name===CF.product)||s.products[0],u=CAT[pr.name],d=CF.qty*pr.price,sch=PaymentService.buildSchedule(CF.days,d,CF.pay),mine=S.contracts.filter(c=>c.businessId==="BZ-1").slice().reverse();
+  const sel=(k,l,o)=>`<label>${l}<select data-cf="${k}">${o.map(x=>`<option value="${esc(x[0])}"${String(x[0])===String(CF[k])?" selected":""}>${esc(x[1])}</option>`).join("")}</select></label>`;
+  return `<div class="card"><h2>Uzoq muddatli kelishuv</h2><div class="grid">${sel("sup","Supplier",S.sups.map(x=>[x.id,x.name]))}${sel("product","Mahsulot",s.products.map(x=>[x.name,x.name]))}<label>Miqdor (${u}/kun)<input type="number" min="1" data-cf="qty" value="${CF.qty}"></label><label>Muddat (kun)<input type="number" min="1" max="365" data-cf="days" value="${CF.days}"></label>${sel("pay","To'lov davri",Object.keys(PAYL).map(k=>[k,PAYL[k]]))}${sel("mode","Yetkazish",[["supplier","Supplier yetkazadi"],["pickup","Biznes o'zi olib ketadi"]])}</div>
+<div class="dl">Narx: <b>${fmt(pr.price)} so'm/${u}</b>, kunlik: ${fmt(d)} so'm, ${CF.days} kun: ${fmt(d*CF.days)} so'm. Platforma komissiyasi: ${fee(d*CF.days)} so'm.${CF.qty>pr.cap?`<br>Diqqat: supplier kunlik quvvati ${nm(pr.cap)} ${u}, supplier rad etishi mumkin.`:""}<br>To'lov jadvali (shartnoma tasdiqlangach avtomatik yaratiladi):${CF.pay==="DELIVERY"?`<br>Har bir yetkazishda: ${fmt(d)} so'm`:sch.map(z=>`<br>#${z.seq} — ${z.fromDay}–${z.toDay} kun: ${fmt(z.amount)} so'm`).join("")}</div>
+<p class="msg" role="alert">${esc(msg)}</p><div class="acts"><button class="btn p" data-act="csend">Supplierga yuborish</button><button class="btn" data-act="cdraft">Qoralama saqlash</button></div></div>
+<div class="card"><h2>Shartnomalarim (${mine.length})</h2>${mine.map((c,i)=>`<div class="row${i?"":" f"}"><div><b>${c.id}: ${esc(sup(c.supplierId).name)}</b><small>${esc(c.product)} ${nm(c.quantityPerDay)} ${c.unit}/kun × ${fmt(c.pricePerUnit)} so'm · ${c.days} kun (${dm(c.startDate)} – ${dm(c.endDate)}) · ${PAYL[c.paymentSchedule]} · ${c.deliveryMode==="pickup"?"Biznes olib ketadi":"Supplier yetkazadi"}${c.orderId?" · "+c.orderId:""}</small></div><div class="acts" style="margin:0">${ctag(c.status)}${c.status==="DRAFT"?`<button class="btn p" data-act="cdsend" data-cid="${c.id}">Yuborish</button><button class="btn d" data-act="cddel" data-cid="${c.id}">O'chirish</button>`:""}</div></div>`).join("")||"<p class='hint'>Shartnoma yo'q.</p>"}</div>`}
+const seed0=()=>({role:"business",sup:"A",tab:{business:"market",supplier:"prod"},sups:JSON.parse(JSON.stringify(SUP0)),orders:[],next:1001,
+biz:{id:"BZ-1",name:"Nur nonvoyxonasi",type:"Nonvoyxona",area:"Ziyokor",addr:"Ziyokor ko'chasi 12",rating:4.7,n:19},
+q:{product:"Sut",qty:20,radius:5,maxPrice:15000,minRating:0,sort:"dist",mode:"supplier",days:30,prep:"06:30",pay:"WEEKLY"}});
+const seed=()=>demo(seed0());
+let S;try{S=JSON.parse(localStorage.getItem("sb-site"))}catch(e){}if(!S||!S.sups)S=seed();else{if(!S.audit)migrate(S);if(!S.contracts)migrate2(S);if(S.ver!==3)migrate3(S)}S.q.pay=S.q.pay||"WEEKLY";
+if(ROLES.indexOf(S.role)<0||S.role==="admin")S.role="business"; // admin roli oddiy interfeysga o'tmaydi
+if(!S.users.some(u=>u.id===S.uid&&u.role===S.role))S.uid=(S.users.find(u=>u.role===S.role&&(S.role==="business"?u.businessId===S.biz.id:u.supplierId===S.sup))||{id:"U-101"}).id;
+const save=()=>{sync();try{localStorage.setItem("sb-site",JSON.stringify(S))}catch(e){}};
+let RF=null,PF=null,BN="",msg="";
+const sup=id=>S.sups.find(s=>s.id===id);
+const score=(r,k)=>{const c=CR[k],w=c.reduce((a,x)=>a+x[1],0);return r.s.reduce((a,v,i)=>a+v*c[i][1],0)/w};
+/* Rating: faqat ikki tomon baholagach ochiladi, boshlang'ich baholarga qo'shiladi */
+function eff(kind,id){
+  let base=kind==="toSup"?sup(id).rating:S.biz.rating,n=kind==="toSup"?sup(id).n:S.biz.n,sum=base*n,c=n;
+  S.orders.forEach(o=>o.parts.forEach(p=>{if(p.r.toSup&&p.r.toBiz&&(kind==="toBiz"||p.sup===id)){sum+=score(p.r[kind],kind);c++}}));
+  return{v:sum/c,n:c};
+}
+/* Moslashtirish (serverga ko'chiriladi) */
+function search(q){
+  const inc=[],exc=[];
+  for(const s of S.sups){
+    const pr=s.products.find(p=>p.name===q.product),d=dist(S.biz.area,s.area),rt=eff("toSup",s.id).v;let why=null;
+    if(!supActive(s.id))why="Supplier faol emas";
+    else if(!pr||pr.cap<=0)why="Mahsulot yoki quvvat yo'q";
+    else if(d>q.radius+1e-9)why="Radiusdan uzoq ("+nm(d)+" km)";
+    else if(d>s.radius+1e-9)why="Yetkazish hududidan tashqarida ("+s.radius+" km)";
+    else if(pr.price>q.maxPrice)why="Narx yuqori";
+    else if(rt<q.minRating)why="Reyting past";
+    const r={s,pr,d,rt};why?exc.push({...r,why}):inc.push(r);
+  }
+  const sc=r=>.4*(1-r.d/q.radius)+.3*Math.max(0,(q.maxPrice-r.pr.price)/q.maxPrice)+.3*(r.rt/5);
+  const cmp={dist:(a,b)=>a.d-b.d,price:(a,b)=>a.pr.price-b.pr.price,rating:(a,b)=>b.rt-a.rt,score:(a,b)=>sc(b)-sc(a)}[q.sort];
+  inc.sort(cmp);let rem=q.qty;
+  for(const r of inc){r.take=Math.min(r.pr.cap,Math.max(rem,0));rem=Math.round((rem-r.take)*100)/100}
+  const cov=q.qty-Math.max(rem,0);
+  return{inc,exc,cov,short:Math.max(rem,0),pct:q.qty>0?Math.floor(cov/q.qty*100):0};
+}
+const PST={SENT:["Javob kutilmoqda","w"],ACTIVE:["Faol",""],PAUSED:["To'xtatilgan","w"],COMPLETED:["Yakunlandi",""],CANCELLED:["Bekor qilingan","x"]};
+const DST={SCHEDULED:"Rejalashtirilgan",PREPARING:"Tayyorlanmoqda",READY:"Tayyor",IN_TRANSIT:"Yo'lda",DELIVERED:"Yetkazildi"};
+const tag=(st)=>`<span class="tag ${PST[st][1]}">${PST[st][0]}</span>`;
+const live=o=>o.parts.filter(p=>p.st!=="CANCELLED");
+function pstat(o){const l=live(o);if(!l.length)return["Bekor qilingan","x"];if(l.every(p=>p.st==="COMPLETED"))return["Yakunlandi",""];if(l.some(p=>p.st==="SENT"))return["Supplierlar javobi kutilmoqda","w"];return["Faol",""]}
+const canRate=(p,role)=>p.st!=="COMPLETED"?"Buyurtma yakunlanmagan":p.r[role==="business"?"toSup":"toBiz"]?"Baholangan":null;
+const unit=o=>CAT[o.product];
+const meter=(o)=>`<div class="meter">${live(o).map((p,i)=>`<i style="width:${Math.min(100,p.qty/o.qty*100)}%;background:${COL[i%4]}">${p.sup} ${nm(p.qty)} ${unit(o)}</i>`).join("")}</div>`;
+
+function dlBox(o,p){
+  const pm=tmin(o.prep),pick=o.mode==="pickup",t=hm(pm+(pick?20:40));
+  return `<div class="dl"><div><b>${o.prep}</b> Supplier tayyorlaydi, <b>${t}</b> ${pick?"Biznes o'zi olib ketadi":"Biznesga yetkazadi"}</div><div>Pickup: ${esc(p.sup+": "+sup(p.sup).area)}, Drop-off: ${esc(S.biz.addr)}</div><div>Bugungi yetkazish: <b>${DST[p.dl]}</b> (kun ${p.day+1} / ${o.days})</div></div>`;
+}
+function starRows(kind){return CR[kind].map((c,i)=>`<div class="sr"><span>${esc(c[0])}</span><div role="radiogroup" aria-label="${esc(c[0])}">${[1,2,3,4,5].map(v=>`<button type="button" class="star ${RF.s[i]>=v?"on":""}" role="radio" aria-checked="${RF.s[i]===v}" aria-label="${v} yulduz" data-i="${i}" data-v="${v}">★</button>`).join("")}</div></div>`).join("")}
+function rateForm(){
+  const o=S.orders[RF.o],p=o.parts[RF.p],kind=S.role==="business"?"toSup":"toBiz";
+  return `<div class="card"><h2>${o.id}: ${S.role==="business"?esc(sup(p.sup).name):esc(S.biz.name)} ni baholang</h2><p class="hint">Faqat yakunlangan buyurtmadan keyin, bir marta. Ikki tomon baholagach reytingga qo'shiladi.</p>${starRows(kind)}<textarea id="cm" maxlength="300" placeholder="Izoh (ixtiyoriy)" style="margin-top:8px">${esc(RF.c)}</textarea><p class="msg" role="alert">${esc(msg)}</p><div class="acts"><button class="btn p" data-act="rsubmit">Yuborish</button><button class="btn" data-act="rcancel">Bekor qilish</button></div></div>`;
+}
+function vMarket(){
+  const q=S.q,r=search(q),u=CAT[q.product],used=r.inc.filter(x=>x.take>0);
+  const f=(k,l,t,extra="")=>`<label>${l}<input type="${t}" data-q="${k}" value="${q[k]}" ${extra}></label>`;
+  const sel=(k,l,opts)=>`<label>${l}<select data-q="${k}">${opts.map(o=>`<option value="${o[0]}"${String(o[0])===String(q[k])?" selected":""}>${o[1]}</option>`).join("")}</select></label>`;
+  return `<div class="card"><h2>Doimiy talab va supplier qidiruvi</h2><p class="hint">Hududingiz: ${esc(S.biz.area)}, ${esc(S.biz.addr)}. Doimiy talab uchun supplierlarning kunlik quvvati hisobga olinadi.</p><div class="grid" style="margin-top:10px">
+${sel("product","Mahsulot",Object.keys(CAT).map(k=>[k,k]))}${f("qty","Miqdor ("+u+"/kun)","number",'min="1"')}${sel("radius","Radius",[1,3,5,10].map(k=>[k,k+" km"]))}${f("maxPrice","Maks. narx (so'm/"+u+")","number",'step="500"')}
+${sel("minRating","Minimal reyting",[[0,"Barchasi"],[4,"4,0+"],[4.5,"4,5+"]])}${sel("sort","Saralash",[["dist","Masofa"],["price","Narx"],["rating","Reyting"],["score","Tavsiya"]])}
+${sel("mode","Yetkazish usuli",[["supplier","Supplier o'zi yetkazadi"],["pickup","Biznes o'zi olib ketadi"]])}${sel("pay","To'lov davri",Object.keys(PAYL).map(k=>[k,PAYL[k]]))}${f("days","Davomiyligi (kun)","number",'min="1" max="365"')}${f("prep","Supplier tayyorlashni boshlaydi","time")}</div></div>
+<div class="card"><p class="big ${r.pct>=100?"":"p"}">Talabni qoplash: ${r.pct}%</p><div class="meter">${used.map((x,i)=>`<i style="width:${x.take/q.qty*100}%;background:${COL[i%4]}">${x.s.id} ${nm(x.take)} ${u}</i>`).join("")}</div>
+<p class="hint">${used.length?used.map(x=>"Supplier "+x.s.id+" "+nm(x.take)+" "+u).join(" + ")+" = "+nm(r.cov)+" "+u:"Mos supplier topilmadi."}${r.short?" Yetishmaydi: "+nm(r.short)+" "+u+".":""}</p>
+<div class="acts"><button class="btn p" data-act="create"${used.length?"":" disabled"}>Buyurtma yaratish va supplierlarga yuborish</button></div></div>
+<div class="card"><h2>Mos supplierlar</h2>${r.inc.map((x,i)=>`<div class="row${i?"":" f"}"><div><b>${nm(x.d)} km, Supplier ${x.s.id}: ${esc(x.s.name)}</b><small>${esc(x.s.area)}, ⭐ ${nm(x.rt)}, ${fmt(x.pr.price)} so'm/${u}, kunlik quvvat ${nm(x.pr.cap)} ${u}</small></div><span class="tag ${x.take>0?"":"n"}">${x.take>0?"Ulushi: "+nm(x.take)+" "+u:"Zaxira"}</span></div>`).join("")||"<p class='hint'>Mos supplier yo'q.</p>"}
+<details><summary>Chetlatilganlar (${r.exc.length})</summary>${r.exc.map(x=>`<p class="hint">Supplier ${x.s.id} (${esc(x.s.area)}): ${x.why}</p>`).join("")}</details></div>`;
+}
+function vBOrders(){
+  return (S.orders.some(o=>o.businessId===S.biz.id)?S.orders.map((o,oi)=>{if(o.businessId!==S.biz.id)return"";
+    const st=pstat(o),l=live(o),day=l.reduce((a,p)=>a+p.qty*p.price,0),u=unit(o),pct=Math.min(100,Math.floor(l.reduce((a,p)=>a+p.qty,0)/o.qty*100));
+    return `<div class="card"><div class="hd"><div><h2 style="margin:0">${o.id}: ${nm(o.qty)} ${u}/kun ${esc(o.product.toLowerCase())}</h2><p class="hint">${o.days} kun, ${o.mode==="pickup"?"Biznes o'zi olib ketadi":"Supplier o'zi yetkazadi"}</p></div><span class="tag ${st[1]}">${st[0]}</span></div>
+${meter(o)}<p class="hint">Qoplash: ${pct}%. Platforma komissiyasi: ${CONFIG.platformCommission}%. Kunlik summa: ${fmt(day)} so'm, to'lov davri: ${PAYL[o.pay||"WEEKLY"]}.</p>
+${o.parts.map((p,pi)=>`<div class="row"><div><b>Supplier ${p.sup}: ${esc(sup(p.sup).name)}</b><small>${nm(p.qty)} ${u} × ${fmt(p.price)} so'm = ${fmt(p.qty*p.price)} so'm/kun, ⭐ ${nm(eff("toSup",p.sup).v)}</small></div><div class="acts" style="margin:0">${tag(p.st)}${p.st==="ACTIVE"&&o.mode==="pickup"&&p.dl==="READY"?`<button class="btn p" data-act="pickup" data-o="${oi}" data-p="${pi}">Olib ketdim</button>`:""}${!canRate(p,"business")?`<button class="btn p" data-act="rate" data-o="${oi}" data-p="${pi}">Baholash</button>`:p.r.toSup?`<span class="tag n">Baholangan</span>`:""}</div>${p.st==="ACTIVE"?`<div style="flex-basis:100%">${dlBox(o,p)}</div>`:""}</div>`).join("")}
+${payRows(o)}<details><summary>Tarix (${o.log.length})</summary><ul class="lg">${o.log.map(x=>`<li>${esc(x)}</li>`).join("")}</ul></details>
+${st[0]!=="Bekor qilingan"&&st[0]!=="Yakunlandi"?`<div class="acts"><button class="btn d" data-act="cancelo" data-o="${oi}">Buyurtmani bekor qilish</button></div>`:""}</div>`}).join(""):`<div class="card"><p>Hali buyurtma yo'q. "Bozor" bo'limida talab yarating.</p></div>`);
+}
+function vSOrders(){
+  const rows=[];S.orders.forEach((o,oi)=>o.parts.forEach((p,pi)=>{if(p.sup===S.sup)rows.push([o,oi,p,pi])}));
+  return rows.length?rows.map(([o,oi,p,pi])=>{
+    const g=p.qty*p.price,c=Math.round(g*CONFIG.platformCommission/100),u=unit(o),b=(a,t,cl="p")=>`<button class="btn ${cl}" data-act="${a}" data-o="${oi}" data-p="${pi}">${t}</button>`;
+    let a="";
+    if(p.st==="SENT")a=b("accept","Qabul qilish")+b("reject","Rad etish","d");
+    else if(p.st==="ACTIVE"){
+      const pick=o.mode==="pickup";
+      a=({SCHEDULED:b("prep","Tayyorlashni boshladim"),PREPARING:b("ready",pick?"Olib ketishga tayyor":"Tayyor"),READY:pick?"":b("go","Yo'lga chiqdim"),IN_TRANSIT:b("done","Yetkazdim")})[p.dl]+b("pause","To'xtatish","")+b("finish","Muddatni yakunlash (simulyatsiya)","");
+    }else if(p.st==="PAUSED")a=b("resume","Davom ettirish");
+    a+=b("dopen","Nizo ochish","");if(!canRate(p,"supplier"))a+=b("rate","Baholash");
+    return `<div class="card"><div class="hd"><div><h2 style="margin:0">${o.id}: ${nm(p.qty)} ${u}/kun ${esc(o.product.toLowerCase())}</h2><p class="hint">Biznes: ${esc(bizName(o.businessId))}, ${o.days} kun, ${o.mode==="pickup"?"biznes o'zi olib ketadi":"siz yetkazasiz"}</p></div>${tag(p.st)}</div>
+<div class="two" style="margin-top:10px"><div class="cap"><small>Yalpi/kun</small><br><b>${fmt(g)} so'm</b></div><div class="now"><small>Sizga/kun (to'liq summa)</small><br><b>${fmt(g-c)} so'm</b></div></div><p class="hint" style="margin:6px 0 0">Platforma komissiyasi: ${CONFIG.platformCommission}%</p>
+${p.st==="ACTIVE"?dlBox(o,p):""}<div class="acts">${a}</div>${p.r.toBiz&&!p.r.toSup?`<p class="hint">Siz baholadingiz. Biznes baholagach reytingga qo'shiladi.</p>`:""}</div>`}).join(""):`<div class="card"><p>Sizga hali buyurtma kelmagan.</p></div>`;
+}
+function vProd(){
+  const s=sup(S.sup);
+  return s.products.map((p,i)=>`<div class="card"><h2>${esc(p.name)}</h2><div class="two"><div class="now"><label>Bugun mavjud (${CAT[p.name]})<input type="number" min="0" step="0.5" data-p="${i}" data-f="today" value="${p.today}"></label></div><div class="cap"><label>Kunlik quvvat (${CAT[p.name]}/kun)<input type="number" min="0" step="0.5" data-p="${i}" data-f="cap" value="${p.cap}"></label></div></div>
+<div class="grid" style="margin-top:10px"><label>Narx (so'm/${CAT[p.name]})<input type="number" min="0" step="500" data-p="${i}" data-f="price" value="${p.price}"></label></div></div>`).join("")+`<p class="hint">Bugun mavjud va kunlik quvvat alohida: bizneslar quvvat bo'yicha doimiy buyurtmalarni rejalashtiradi. O'zgarishlar bozor natijalariga darhol ta'sir qiladi.</p>`;
+}
+function vProfile(){
+  const b=S.role==="business",s=sup(S.sup),k=b?"toBiz":"toSup",e=eff(k,S.sup),area=b?S.biz.area:s.area;
+  const opts=Object.keys(AREAS).map(a=>`<option${a===area?" selected":""}>${esc(a)}</option>`).join("");
+  return `<div class="card"><h2>${b?esc(S.biz.name):"Supplier "+s.id+": "+esc(s.name)}</h2>
+<p class="big">⭐ ${nm(e.v)}</p><p class="hint">${e.n} ta baho. ${b?"Supplierlar bergan":"Bizneslar bergan"} baholar asosida backend hisoblaydi.</p>
+<div class="grid" style="margin-top:12px"><label>Hudud<select data-prof="area">${opts}</select></label>
+${b?`<label>Manzil<input data-prof="addr" value="${esc(S.biz.addr)}"></label>`:`<label>Yetkazib berish radiusi<select data-prof="radius">${[1,2,3,5,8].map(k=>`<option${k===s.radius?" selected":""}>${k}</option>`).join("")}</select></label>`}</div></div>
+<div class="card"><p class="acts" style="margin:0"><button class="btn" data-act="reset">Namuna ma'lumotlarni tiklash</button></p></div>`;
+}
+function render(){
+  sync();const R=S.role,cu0=Auth.current(),nun=cu0?Notify.unread(cu0):0,nl="Bildirishnoma"+(nun?" ("+nun+")":""),tabs=R==="business"?[["market","Bozor"],["orders","Buyurtmalar"],["pay","To'lovlar"],["contracts","Shartnomalar"],["disp","Nizolar"],["notif",nl],["profile","Profil"]]:[["prod","Mahsulotlar"],["orders","Buyurtmalar"],["pay","To'lovlar"],["contracts","Shartnomalar"],["disp","Nizolar"],["notif",nl],["profile","Profil"]];
+  document.querySelectorAll("[data-role]").forEach(b=>b.setAttribute("aria-pressed",b.dataset.role===R));
+  $("supsel").innerHTML=R==="supplier"?`<label>Supplier sifatida<select id="ss">${S.sups.map(s=>`<option value="${s.id}"${s.id===S.sup?" selected":""}>Supplier ${s.id}: ${esc(s.name)}</option>`).join("")}</select></label>`:"";
+  $("nav").innerHTML=tabs.map(t=>`<button data-tab="${t[0]}" ${S.tab[R]===t[0]?'aria-current="page"':""}>${t[1]}</button>`).join("");
+  const t=S.tab[R];
+  $("app").innerHTML=banner()+(RF?rateForm():"")+(PF?payForm():"")+(t==="market"?vMarket():t==="prod"?vProd():t==="orders"?(R==="business"?vBOrders():vSOrders()):t==="pay"?(R==="business"?vBPay():vSPay()):t==="contracts"?(R==="business"?vContracts():vSContracts()):t==="disp"?vDisp():t==="notif"?vNotif():vProfile());
+  $("foot").textContent="Platforma komissiyasi: "+CONFIG.platformCommission+"%";
+}
+const NXT={prep:"PREPARING",ready:"READY",go:"IN_TRANSIT"};
+function advance(o,p){
+  PaymentService.onDelivered(S,o,p,p.day+1);p.day++;
+  if(p.day>=o.days){p.day=o.days;p.st="COMPLETED";log(o,"Tizim","Supplier "+p.sup+" qismi yakunlandi")}else p.dl="SCHEDULED";
+}
+$("app").addEventListener("click",e=>{
+  const sb=e.target.closest(".star");
+  if(sb){RF.s[Number(sb.dataset.i)]=Number(sb.dataset.v);RF.c=($("cm")||{value:""}).value;render();return}
+  const b=e.target.closest("[data-act]");if(!b)return;run(b.dataset.act,b.dataset)});
+const ACT_PERM={create:"orders.create",cancelo:"orders.create",pickup:"orders.create",accept:"orders.accept",reject:"orders.reject",prep:"delivery.update",ready:"delivery.update",go:"delivery.update",done:"delivery.update",pause:"delivery.update",resume:"delivery.update",finish:"delivery.update",pfm:"payments.submit",pfsub:"payments.submit",pconf:"payments.confirm",pdisp:"disputes.create",dopen:"disputes.create",dsub:"disputes.create",csend:"contracts.create",cdraft:"contracts.create",cdsend:"contracts.create",cddel:"contracts.create",rate:"orders.view",rsubmit:"orders.view",reset:"profile.manage"};
+const MODIFY=["accept","reject","prep","ready","go","done","pickup","pause","resume","finish","cancelo"];
+function run(a,ds){ // barcha harakatlar shu yerdan o'tadi: permission → validatsiya → holat o'zgarishi. Backendda shu qatlam API endpoint bo'ladi
+  const o=S.orders[ds.o],p=o&&o.parts[ds.p],R=S.role,before=p?p.st+"|"+p.dl:"";msg="";BN="";
+  try{
+  const cu=Auth.current();if(ACT_PERM[a]&&(!cu||cu.role!==R))throw Error("Sessiya roli mos emas.");
+  if(ACT_PERM[a])Auth.require(ACT_PERM[a]);
+  if(MODIFY.includes(a)){
+    if(R==="business"&&o&&o.businessId!==S.biz.id)throw Error("Bu buyurtma sizniki emas.");
+    if(o&&(a==="cancelo"?o.parts.every(x=>x.st==="COMPLETED"||x.st==="CANCELLED"):p&&(p.st==="COMPLETED"||p.st==="CANCELLED")))throw Error("Yakunlangan yoki bekor qilingan buyurtmani o'zgartirib bo'lmaydi.");
+    if(a==="accept"&&p&&!sup(p.sup).products.some(x=>x.name===o.product))throw Error("Supplier bu mahsulotni sotmaydi.")}
+  
+  if(a==="nread"){const u=Auth.current();S.notifs.forEach(n=>{if(u&&n.userId===u.id)n.read=true})}
+  else if(a==="dopen"){DF.orderId=ds.oid||(o&&o.id)||DF.orderId;DF.paymentId=ds.pid||"";S.tab[R]="disp"}
+  else if(a==="dsub"){DisputeService.open(DF);DF.description="";DF.paymentId=""}
+  else if(a==="pfm"&&R==="business"){const x=S.pay.find(y=>y.id===ds.pid);if(x)PF={id:x.id,amount:x.amount,method:PaymentService.provider.methods[0],tx:"",date:today(),note:""}}
+  else if(a==="pfcancel")PF=null;
+  else if(a==="pfsub"&&R==="business"&&PF){msg=PaymentService.submit(PF.id,PF);if(!msg)PF=null}
+  else if(a==="pconf"&&R==="supplier")PaymentService.confirm(ds.pid);
+  else if(a==="pdisp"&&R==="supplier")PaymentService.dispute(ds.pid);
+  else if((a==="csend"||a==="cdraft")&&R==="business"){{const er=Validate.qty(CF.qty)||Validate.days(CF.days)||Validate.supplier(CF.sup,CF.product);if(er)msg=er;else{const c=newDraft();if(a==="csend")sendContract(c)}}}
+  else if(a==="cdsend"&&R==="business"){const c=S.contracts.find(x=>x.id===ds.cid);if(c&&c.status==="DRAFT"&&c.businessId===S.biz.id)sendContract(c)}
+  else if(a==="cddel"&&R==="business")S.contracts=S.contracts.filter(x=>!(x.id===ds.cid&&x.status==="DRAFT"&&x.businessId===S.biz.id));
+  else if(a==="create"){
+    const r=search(S.q),used=r.inc.filter(x=>x.take>0);
+    {const er=Validate.qty(S.q.qty)||Validate.days(S.q.days)||Validate.nonneg(S.q.maxPrice,"Narx")||used.map(x=>Validate.supplier(x.s.id,S.q.product)).find(Boolean);if(er)throw Error(er)}
+    if(used.length){const q=S.q;S.orders.unshift({id:"SB-"+S.next++,created:new Date().toISOString(),updated:new Date().toISOString(),product:q.product,qty:q.qty,days:q.days,mode:q.mode,prep:q.prep,pay:q.pay||"WEEKLY",businessId:S.biz.id,log:[],parts:used.map(x=>({sup:x.s.id,qty:x.take,price:x.pr.price,st:"SENT",day:0,dl:"SCHEDULED",r:{}}))});
+      S.orders[0].parts.forEach(pp=>{PaymentService.contract(S,S.orders[0],pp,today(),"PENDING");Notify.send(Notify.sup(pp.sup),"order.new","Yangi buyurtma",S.orders[0].id+": "+nm(pp.qty)+" "+unit(S.orders[0])+"/kun")});log(S.orders[0],"Biznes","Buyurtma yaratildi va "+used.length+" ta supplierga yuborildi");S.tab.business="orders"}
+  }else if(a==="cancelo"&&R==="business"){o.parts.forEach(x=>{if(x.st!=="COMPLETED")x.st="CANCELLED"});log(o,"Biznes","Buyurtmani bekor qildi")}
+  else if(a==="pickup"&&R==="business"&&p.dl==="READY"&&o.mode==="pickup"){p.dl="DELIVERED";log(o,"Biznes","Supplier "+p.sup+": olib ketdi");advance(o,p)}
+  else if(R==="supplier"&&p&&p.sup===S.sup){
+    if(a==="accept"&&p.st==="SENT"){p.st="ACTIVE";log(o,"Supplier "+p.sup,"Qismni qabul qildi")}
+    else if(a==="reject"&&p.st==="SENT"){p.st="CANCELLED";log(o,"Supplier "+p.sup,"Qismni rad etdi")}
+    else if(NXT[a]&&p.st==="ACTIVE"){p.dl=NXT[a];log(o,"Supplier "+p.sup,DST[p.dl])}
+    else if(a==="done"&&p.dl==="IN_TRANSIT"){p.dl="DELIVERED";log(o,"Supplier "+p.sup,"Yetkazdi");advance(o,p)}
+    else if(a==="pause"&&p.st==="ACTIVE"){p.st="PAUSED";log(o,"Supplier "+p.sup,"To'xtatdi")}
+    else if(a==="resume"&&p.st==="PAUSED"){p.st="ACTIVE";log(o,"Supplier "+p.sup,"Davom ettirdi")}
+    else if(a==="finish"&&p.st==="ACTIVE"){p.day=o.days;p.st="COMPLETED";log(o,"Tizim","Muddat yakunlandi (simulyatsiya)")}
+  }
+  if(a==="rate"&&p&&!canRate(p,R)){RF={o:Number(ds.o),p:Number(ds.p),s:[],c:""}}
+  else if(a==="rcancel")RF=null;
+  else if(a==="rsubmit"){
+    const oo=S.orders[RF.o],pp=oo.parts[RF.p],kind=R==="business"?"toSup":"toBiz";RF.c=$("cm").value;
+    if(canRate(pp,R)||(R==="supplier"&&pp.sup!==S.sup))msg="Bu buyurtmani hozir baholab bo'lmaydi.";
+    else if(RF.s.length<CR[kind].length||RF.s.some(v=>!v))msg="Barcha mezonlarni 1 dan 5 gacha baholang.";
+    else{pp.r[kind]={s:RF.s.slice(),c:RF.c.trim().slice(0,300)};log(oo,R==="business"?"Biznes":"Supplier "+pp.sup,"Baho berdi");RF=null}
+  }else if(a==="reset"){S=seed();RF=null;audit("Tizim","system","demo.reset","system","-","Demo ma'lumotlar tiklandi")}
+  if(p&&R==="supplier"){const nb=Notify.biz(o.businessId),t=o.id+" / Supplier "+p.sup;
+    if(a==="accept"&&p.st==="ACTIVE")Notify.send(nb,"order.accepted","Buyurtma qabul qilindi",t);
+    else if(a==="reject"&&p.st==="CANCELLED")Notify.send(nb,"order.rejected","Buyurtma rad etildi",t);
+    else if(a==="ready"&&p.dl==="READY")Notify.send(nb,"delivery.ready","Mahsulot tayyor",t);
+    else if(a==="done"&&before.split("|")[1]==="IN_TRANSIT")Notify.send(nb,"delivery.done","Mahsulot yetkazildi",t)}
+  }catch(err){BN=err.message}
+  save();render();
+}
+$("app").addEventListener("change",e=>{
+  const t=e.target,d=t.dataset;BN="";
+  if(d.q){S.q[d.q]=["qty","radius","maxPrice","minRating","days"].includes(d.q)?Number(t.value):t.value}
+  else if(d.f){const pr=sup(S.sup).products[d.p],v=Number(t.value);try{Auth.require("products.manage");const er=Validate.nonneg(v,d.f==="price"?"Narx":"Miqdor");if(er)throw Error(er);pr[d.f]=v;audit("Supplier "+S.sup,"supplier","product.update","product",S.sup+"/"+pr.name,pr.name+": "+d.f+" = "+pr[d.f])}catch(err){BN=err.message}}
+  else if(d.prof){if(!Auth.can("profile.manage")){BN="Ruxsat yo'q: profile.manage";render();return}const v=["radius"].includes(d.prof)?Number(t.value):t.value;if(S.role==="business")S.biz[d.prof]=v;else sup(S.sup)[d.prof]=v;audit(S.role==="business"?S.biz.name:"Supplier "+S.sup,S.role,"profile.update","profile",S.role==="business"?"BZ-1":S.sup,d.prof+" o'zgartirildi")}
+  else if(d.cf){CF[d.cf]=["qty","days"].includes(d.cf)?Number(t.value):t.value;if(d.cf==="sup")CF.product=sup(t.value).products[0].name;render();return}
+  else if(d.df){DF[d.df]=t.value;if(d.df==="orderId")DF.paymentId="";render();return}
+  else if(d.pf)return;
+  else return;
+  save();render();
+});
+$("app").addEventListener("input",e=>{if(e.target.id==="cm"&&RF)RF.c=e.target.value;else if(e.target.dataset.pf&&PF)PF[e.target.dataset.pf]=e.target.value;else if(e.target.dataset.df)DF[e.target.dataset.df]=e.target.value});
+$("nav").addEventListener("click",e=>{const b=e.target.closest("[data-tab]");if(b){S.tab[S.role]=b.dataset.tab;RF=PF=null;save();render()}});
+$("roles").addEventListener("click",e=>{const b=e.target.closest("[data-role]");if(b&&(b.dataset.role==="business"||b.dataset.role==="supplier")){loginRole(b.dataset.role);RF=PF=null;save();render()}});
+$("supsel").addEventListener("change",e=>{if(e.target.id==="ss"){S.sup=e.target.value;loginRole("supplier");RF=PF=null;save();render()}});
+/* ===== ADMIN PANEL: alohida kirish (#admin), oddiy Business/Supplier interfeysida havola yo'q. Faqat ko'rish rejimi ===== */
+let AV="dash",AF="",APF="",AMSG="",AC=null,AERR="";
+const isAdm=()=>{const u=Auth.current();return Auth.ctx==="admin"&&!!u&&u.status==="ACTIVE"};
+const aParts=()=>{const r=[];S.orders.forEach(o=>o.parts.forEach(p=>r.push({o,p})));return r};
+const aPay=(o,p)=>S.pay.filter(x=>x.orderId===o.id&&x.supplierId===p.sup);
+const worst=l=>{if(!l.length)return null;for(const k of["OVERDUE","DISPUTED","PENDING","PAYMENT_SUBMITTED","PAID","CANCELLED"])if(l.some(x=>x.status===k))return k};
+const ptg=st=>st?`<span class="tag ${PT[st][1]}">${PT[st][0]}</span>`:"—";
+const aTbl=(c,r,empty)=>`<div class="tw"><table><thead><tr>${c.map(x=>`<th>${x}</th>`).join("")}</tr></thead><tbody>${r.length?r.map(x=>`<tr>${x.map(y=>`<td>${y}</td>`).join("")}</tr>`).join(""):`<tr><td colspan="${c.length}" class="hint" style="white-space:normal">${empty}</td></tr>`}</tbody></table></div>`;
+const aCard=(l,v,s)=>`<div class="stat"><small>${l}</small><b>${v}</b>${s?`<span>${s}</span>`:""}</div>`;
+const RL={business:"Business",supplier:"Supplier",admin:"Admin",system:"Tizim"};
+const aBars=it=>{const m=Math.max(1,...it.map(x=>x[1]));return it.map(x=>`<div class="br"><span>${esc(x[0])}</span><div><i style="width:${x[1]/m*100}%"></i></div><span>${x[2]}</span></div>`).join("")||"<p class='hint'>Ma'lumot yo'q</p>"};
+const aLine=a=>`${dt(a.ts)} — ${RL[a.role]||a.role} — ${esc(a.oid)}: ${esc(a.desc)}`;
+const aVal=x=>x.p.qty*x.p.price*x.o.days;
+const V={
+dash(){
+  const l=aParts(),act=S.orders.filter(o=>pstat(o)[0]==="Faol").length,pend=S.orders.filter(o=>pstat(o)[0].indexOf("Supplierlar")===0).length;
+  const un=S.pay.filter(x=>!["PAID","CANCELLED"].includes(x.status)),ov=S.pay.filter(x=>payState(x)==="OVERDUE"),sm=a=>a.reduce((t,x)=>t+x.amount,0);
+  const tot=l.filter(x=>x.p.st!=="CANCELLED").reduce((t,x)=>t+aVal(x),0),td=l.filter(x=>x.p.st==="ACTIVE").reduce((t,x)=>t+x.p.qty*x.p.price,0);
+  return `<div class="stats">${aCard("Jami bizneslar",1+S.demoBiz.length)}${aCard("Jami supplierlar",S.sups.length)}${aCard("Faol buyurtmalar",act)}${aCard("Kutilayotgan buyurtmalar",pend)}${aCard("To'lanmagan to'lovlar",un.length+" ta",fmt(sm(un))+" so'm")}${aCard("Kechikkan to'lovlar",ov.length+" ta",fmt(sm(ov))+" so'm")}${aCard("Tasdiqlash kutilmoqda",S.pay.filter(x=>x.status==="PAYMENT_SUBMITTED").length+" ta")}${aCard("Ochiq nizolar",S.disputes.filter(d=>["OPEN","UNDER_REVIEW"].includes(d.status)).length)}${aCard("Faol shartnomalar",S.contracts.filter(c=>c.status==="ACTIVE").length)}${aCard("Jami buyurtma summasi",fmt(tot),"so'm")}${aCard("Bugungi aylanma",fmt(td),"so'm (faol yetkazishlar)")}</div>
+<div class="card"><h2>So'nggi harakatlar</h2>${S.audit.slice().sort((a,b)=>a.ts<b.ts?1:-1).slice(0,6).map(a=>`<p class="hint" style="margin:6px 0">${aLine(a)}</p>`).join("")||"<p class='hint'>Harakat yo'q</p>"}</div>`;
+},
+orders(){
+  return `<div class="card"><h2>Buyurtmalar (${aParts().length} ta supplier buyurtmasi)</h2><p class="hint">Faqat ko'rish. Har bir qator: parent buyurtmaning bitta supplier qismi.</p>`+aTbl(["Order ID","Business","Supplier","Mahsulot","Miqdor","Narx","Kunlik summa","Muddat","Buyurtma statusi","Yetkazib berish","To'lov","Yaratilgan","Oxirgi o'zgarish","Action/log"],
+  aParts().map(({o,p})=>{const u=CAT[o.product];return [o.id+"-"+p.sup,esc(bizName(o.businessId)),"Supplier "+p.sup+": "+esc(sup(p.sup).name),esc(o.product),nm(p.qty)+" "+u+"/kun",fmt(p.price)+" so'm/"+u,fmt(p.qty*p.price)+" so'm",o.days+" kun, o'tgan "+p.day,tag(p.st),p.st==="ACTIVE"?DST[p.dl]:"—",ptg(worst(aPay(o,p))),dt(o.created),dt(o.updated),`<details><summary>Log (${o.log.length})</summary><ul class="lg">${o.log.map(x=>`<li>${esc(x)}</li>`).join("")}</ul></details>`]}),"Buyurtma yo'q")+`</div>`;
+},
+pay(){
+  const sm=k=>fmt(S.pay.filter(x=>x.status===k).reduce((t,x)=>t+x.amount,0))+" so'm",cn=k=>S.pay.filter(x=>x.status===k).length;
+  const fl=[["","Barchasi"],["PENDING","Kutilmoqda"],["PAYMENT_SUBMITTED","Tasdiqlash kutilmoqda"],["PAID","To'langan"],["OVERDUE","Kechikkan"],["DISPUTED","Nizoli"],["CANCELLED","Bekor qilingan"]],l=S.pay.filter(x=>!APF||x.status===APF);
+  return `<div class="stats">${aCard("To'langan",cn("PAID")+" ta",sm("PAID"))}${aCard("Kutilmoqda",cn("PENDING")+" ta",sm("PENDING"))}${aCard("Tasdiqlash kutilmoqda",cn("PAYMENT_SUBMITTED")+" ta",sm("PAYMENT_SUBMITTED"))}${aCard("Kechikkan",cn("OVERDUE")+" ta",sm("OVERDUE"))}${aCard("Platforma komissiyasi",CONFIG.platformCommission+"%","Supplier to'liq summani oladi")}</div><div class="card"><div class="hd"><h2 style="margin:0">To'lovlar (${l.length})</h2><label style="margin:0">Status<select id="apf">${fl.map(f=>`<option value="${f[0]}"${APF===f[0]?" selected":""}>${f[1]}</option>`).join("")}</select></label></div><div style="margin-top:10px">`+
+  aTbl(["ID","Order","Contract","Business","Supplier","Summa","Muddat","To'lov usuli","Transaction ID","Status","Yaratilgan sana","To'langan sana","Amal"],l.map(x=>[x.id,x.orderId,x.contractId,esc(bizName(x.businessId)),"Supplier "+x.supplierId,fmt(x.amount)+" so'm",dm(x.dueDate),esc(x.paymentMethod||"—"),esc(x.transactionId||"—"),ptg(x.status),dt(x.createdAt),x.paidAt?dm(x.paidAt):"—",payAct(x)]),"To'lov yo'q")+`</div></div>`;
+},
+agr(){
+  return `<div class="card"><h2>Shartnomalar (${S.contracts.length})</h2>`+aTbl(["Contract ID","Business","Supplier","Product","Quantity","Price","Start","End","Payment schedule","Status","Yetkazish","Order","Amal"],
+  S.contracts.map(c=>[c.id,esc(bizName(c.businessId)),"Supplier "+c.supplierId+": "+esc(sup(c.supplierId).name),esc(c.product),nm(c.quantityPerDay)+" "+c.unit+"/kun",fmt(c.pricePerUnit)+" so'm/"+c.unit,dm(c.startDate),dm(c.endDate),PAYL[c.paymentSchedule],ctag(c.status),c.deliveryMode==="pickup"?"Biznes olib ketadi":"Supplier yetkazadi",c.orderId||"—",ctAct(c)]),"Shartnoma yo'q")+`</div>`;
+},
+biz(){
+  const own={...S.biz,id:"BZ-1"},all=[own].concat(S.demoBiz);
+  return `<div class="card"><h2>Bizneslar (${all.length})</h2>`+aTbl(["ID","Nomi","Turi","Hudud","Manzil","Reyting","Buyurtmalar soni","To'lov holati","Status"],
+  all.map(b=>[b.id,esc(b.name),esc(b.type),esc(b.area),esc(b.addr),"⭐ "+nm(b.id==="BZ-1"?eff("toBiz").v:b.rating),S.orders.filter(o=>o.businessId===b.id).length,ptg(worst(S.pay.filter(x=>x.businessId===b.id))),'<span class="tag">Faol</span>']),"Biznes yo'q")+`</div>`;
+},
+sup(){
+  return `<div class="card"><h2>Supplierlar (${S.sups.length})</h2>`+aTbl(["ID","Nomi","Hudud","Radius","Reyting","Mahsulotlari","Buyurtmalar soni","Status"],
+  S.sups.map(s=>[s.id,esc(s.name),esc(s.area),s.radius+" km","⭐ "+nm(eff("toSup",s.id).v),s.products.map(p=>esc(p.name)+" "+nm(p.cap)+" "+CAT[p.name]+"/kun").join(", "),aParts().filter(x=>x.p.sup===s.id).length,'<span class="tag">Faol</span>']),"Supplier yo'q")+`</div>`;
+},
+disp(){
+  const c=k=>S.disputes.filter(d=>d.status===k).length,can=Auth.can("disputes.manage"),B=(d,st,t,cl)=>`<button class="btn s ${cl}" data-a="dstat" data-id="${d.id}" data-st="${st}">${t}</button>`;
+  const act=d=>!can?"—":({OPEN:B(d,"UNDER_REVIEW","Ko'rib chiqish","p")+B(d,"REJECTED","Rad etish","d"),UNDER_REVIEW:B(d,"RESOLVED","Hal qilish","p")+B(d,"REJECTED","Rad etish","d"),RESOLVED:B(d,"CLOSED","Yopish",""),REJECTED:B(d,"CLOSED","Yopish",""),CLOSED:"—"})[d.status];
+  return `<div class="stats">${aCard("Ochiq",c("OPEN"))}${aCard("Ko'rib chiqilmoqda",c("UNDER_REVIEW"))}${aCard("Hal qilingan",c("RESOLVED"))}${aCard("Rad etilgan",c("REJECTED"))}${aCard("Yopilgan",c("CLOSED"))}</div>${can?`<div class="card"><label>Yechim matni (Hal qilish/Rad etish uchun)<textarea id="dres" maxlength="500"></textarea></label></div>`:""}<div class="card"><h2>Nizolar (${S.disputes.length})</h2>`+
+  aTbl(["Nizo ID","Order","Payment","Contract","Business","Supplier","Ochgan","Sabab","Tavsif","Holat","Yaratilgan","Hal qilingan","Yechim","Amal"],S.disputes.map(d=>[d.id,d.orderId,d.paymentId||"—",d.contractId||"—",esc(bizName(d.businessId)),"Supplier "+d.supplierId,RL[d.openedBy],DREASONS[d.reason],esc(d.description),dtag(d.status),dt(d.createdAt),d.resolvedAt?dt(d.resolvedAt):"—",esc(d.resolution||"—"),act(d)]),"Hozircha nizo yo'q")+`</div>`;
+},
+users(){
+  return `<div class="card"><h2>Foydalanuvchilar (${S.users.length})</h2>`+aTbl(["ID","Ism","Telefon","Email","Rol","Business","Supplier","Status","Yaratilgan","Oxirgi kirish","Amal"],S.users.map(u=>[u.id,esc(u.name),esc(u.phone),esc(u.email),RL[u.role],u.businessId||"—",u.supplierId||"—",`<span class="tag ${UT[u.status][1]}">${UT[u.status][0]}</span>`,dt(u.createdAt),u.lastLoginAt?dt(u.lastLoginAt):"—",uAct(u)]),"")+`</div>`;
+},
+notif(){
+  const l=S.notifs.slice().reverse().slice(0,150);
+  return `<div class="card"><h2>Bildirishnomalar (${S.notifs.length})</h2>`+aTbl(["ID","Foydalanuvchi","Turi","Sarlavha","Xabar","O'qilgan","Vaqt"],l.map(n=>[n.id,esc((S.users.find(u=>u.id===n.userId)||{name:n.userId}).name),esc(n.type),esc(n.title),esc(n.message),n.read?"ha":"yo'q",dt(n.createdAt)]),"Bildirishnoma yo'q")+`</div>`;
+},
+stat(){
+  const l=aParts(),by={},pr={},sp={};
+  l.forEach(x=>{by[x.p.st]=(by[x.p.st]||0)+1;if(x.p.st!=="CANCELLED"){pr[x.o.product]=(pr[x.o.product]||0)+aVal(x);sp[x.p.sup]=(sp[x.p.sup]||0)+aVal(x)}});
+  return `<div class="card"><h2>Supplier buyurtmalari holati bo'yicha</h2>${aBars(Object.keys(by).map(k=>[PST[k][0],by[k],by[k]+" ta"]))}</div><div class="card"><h2>Mahsulot bo'yicha buyurtma summasi</h2>${aBars(Object.keys(pr).map(k=>[k,pr[k],fmt(pr[k])+" so'm"]))}</div><div class="card"><h2>Supplier bo'yicha buyurtma summasi</h2>${aBars(Object.keys(sp).map(k=>["Supplier "+k,sp[k],fmt(sp[k])+" so'm"]))}</div>`;
+},
+audit(){
+  const l=S.audit.slice().sort((a,b)=>a.ts<b.ts?1:-1).filter(a=>!AF||a.role===AF);
+  return `<div class="card"><div class="hd"><h2 style="margin:0">Audit log (${l.length})</h2><label style="margin:0">Rol<select id="af"><option value="">Barchasi</option>${["business","supplier","admin","system"].map(r=>`<option value="${r}"${AF===r?" selected":""}>${RL[r]}</option>`).join("")}</select></label></div><div style="margin-top:10px">`+
+  aTbl(["Vaqt","Actor","Actor role","Action","Object type","Object ID","Description"],l.slice(0,150).map(a=>[dt(a.ts),esc(a.actor),RL[a.role]||a.role,esc(a.action),esc(a.type),esc(a.oid),esc(a.desc)]),"Yozuv yo'q")+`</div></div>`;
+},
+set(){
+  const r=[["platformCommission",CONFIG.platformCommission+"%"],["paymentPeriodDays",CONFIG.paymentPeriodDays+" kun (haftalik)"],["currency",CONFIG.currency],["paymentProvider",CONFIG.paymentProvider+" ("+PaymentService.provider.name+")"],["deliveryGapMin.supplier",CONFIG.deliveryGapMin.supplier+" daqiqa"],["deliveryGapMin.pickup",CONFIG.deliveryGapMin.pickup+" daqiqa"],["roles",ROLES.join(", ")],["storage","localStorage (demo)"]];
+  return `<div class="card"><h2>Sozlamalar (CONFIG)</h2><p class="hint">Hozircha faqat ko'rish. Backendda bu qiymatlar sozlamalar jadvalidan o'qiladi.</p>`+aTbl(["Kalit","Qiymat"],r.map(x=>[x[0],esc(x[1])]),"")+`</div>
+<div class="card"><h2>Backendga o'tish uchun entity'lar</h2><pre class="sc">users           -> S.users[] (Auth: user → role → ROLE_PERMS)
+notifications   -> S.notifs[]
+businesses      -> S.biz, S.demoBiz
+suppliers       -> S.sups[] (products[])
+orders          -> S.orders[] (parts[] = supplier_orders)
+payments        -> S.pay[] (PaymentService)
+contracts       -> S.contracts[]
+providers       -> PaymentProviders{} (manual, click, payme, uzum)
+audit_log       -> S.audit[]
+disputes        -> S.disputes[]
+config          -> CONFIG</pre></div>`;
+}};
+const ANAV=[["dash","Dashboard"],["orders","Buyurtmalar"],["pay","To'lovlar"],["agr","Shartnomalar"],["biz","Bizneslar"],["sup","Supplierlar"],["users","Foydalanuvchilar"],["disp","Nizolar"],["notif","Bildirishnomalar"],["stat","Statistika"],["audit","Audit log"],["set","Sozlamalar"]];
+const VIEW_PERM={dash:"dashboard.view",orders:"orders.view",pay:"payments.view",agr:"contracts.view",biz:"businesses.view",sup:"suppliers.view",disp:"disputes.manage",stat:"dashboard.view",audit:"audit.view",set:"settings.manage",users:"users.manage",notif:"dashboard.view"};
+const UT={ACTIVE:["Faol",""],BLOCKED:["Bloklangan","x"],PENDING:["Kutilmoqda","w"]};
+const payAct=x=>Auth.can("payments.manage")&&!["PAID","CANCELLED"].includes(x.status)?`<button class="btn s p" data-a="markpaid" data-id="${x.id}">PAID qilish</button><button class="btn s d" data-a="pcancel" data-id="${x.id}">Bekor</button>`:"—";
+const ctAct=c=>Auth.can("contracts.manage")&&!["COMPLETED","CANCELLED"].includes(c.status)?`<button class="btn s d" data-a="ccancel" data-id="${c.id}">Bekor qilish</button>`:"—";
+const uAct=u=>{const me=Auth.current();if(!Auth.can("users.manage")||u.id===me.id)return u.id===me.id?"(siz)":"—";return u.status==="ACTIVE"?`<button class="btn s d" data-a="ublock" data-id="${u.id}">Bloklash</button>`:`<button class="btn s p" data-a="uact" data-id="${u.id}">Aktivlashtirish</button>`};
+const confirmCard=()=>{const t=S.users.find(u=>u.id===AC.id);return t?`<div class="card" style="border-color:var(--bad)"><h2>Tasdiqlash</h2><p>${esc(t.name)} (${RL[t.role]}) statusi <b>${UT[AC.st][0]}</b> qilinadi. ${t.role==="admin"?"DIQQAT: bu ADMIN foydalanuvchi, tizim boshqaruviga ta'sir qiladi. ":""}Ishonchingiz komilmi?</p><div class="acts"><button class="btn p" data-a="uyes">Ha, tasdiqlayman</button><button class="btn" data-a="uno">Bekor qilish</button></div></div>`:""};
+function adminAct(a,d){
+  if(a==="markpaid")AdminService.markPaid(d.id);
+  else if(a==="pcancel")AdminService.cancelPayment(d.id);
+  else if(a==="ccancel")AdminService.cancelContract(d.id);
+  else if(a==="dstat")DisputeService.setStatus(d.id,d.st,($("dres")||{}).value);
+  else if(a==="ublock"||a==="uact"){Auth.require("users.manage");AC={id:d.id,st:a==="ublock"?"BLOCKED":"ACTIVE"}}
+  else if(a==="uyes"){const c=AC;AC=null;if(c)AdminService.setUser(c.id,c.st,true)}
+  else if(a==="uno")AC=null}
+function admRender(){
+  sync();const el=$("adm");
+  if(!isAdm()){el.innerHTML=`<div class="card" style="max-width:380px;margin:40px auto"><h1>Admin kirish</h1><p class="hint">Demo rejim. Faqat vakolatli foydalanuvchilar uchun.</p><label style="margin-top:12px">Login<input id="au" autocomplete="off"></label><label style="margin-top:10px">Parol<input id="ap" type="password" autocomplete="off"></label><p class="msg" role="alert">${esc(AMSG)}</p><div class="acts"><button class="btn p" data-a="login">Kirish</button></div></div>`;return}
+  const cu=Auth.current(),nav=ANAV.filter(n=>Auth.can(VIEW_PERM[n[0]]));
+  if(!nav.some(n=>n[0]===AV))AV=nav.length?nav[0][0]:"dash";
+  el.innerHTML=`<div class="aw"><div class="ab"><div><h1>SutBozor Admin</h1><p class="hint">${esc(cu.name)} · Platforma komissiyasi: ${CONFIG.platformCommission}%</p></div><button class="btn" data-a="logout">Chiqish</button></div><div class="al"><nav class="an" aria-label="Admin bo'limlari">${nav.map(n=>`<button data-v="${n[0]}" ${AV===n[0]?'aria-current="page"':""}>${n[1]}</button>`).join("")}</nav><div>${AERR?`<div class="card"><p class="msg" role="alert">${esc(AERR)}</p></div>`:""}${AC?confirmCard():""}${nav.length?V[AV]():"<div class='card'>Ruxsat yo'q.</div>"}</div></div></div>`;
+}
+function admLogin(){
+  const u=$("au").value.trim(),pw=$("ap").value;
+  if(u===ADMIN_DEMO.username&&pw===ADMIN_DEMO.password){const au=S.users.find(x=>x.id==="U-1");if(au.status!=="ACTIVE")AMSG="Hisob bloklangan";else{try{sessionStorage.setItem("sb-admin",au.id)}catch(e){}AMSG="";au.lastLoginAt=new Date().toISOString();audit(au.name,"admin","admin.login","session","-","Admin tizimga kirdi")}}
+  else{AMSG="Login yoki parol noto'g'ri";audit(u||"noma'lum","admin","admin.login_failed","session","-","Muvaffaqiyatsiz kirish urinishi")}
+  save();admRender();
+}
+$("adm").addEventListener("click",e=>{
+  const v=e.target.closest("[data-v]");if(v){AV=v.dataset.v;admRender();return}
+  const b=e.target.closest("[data-a]");if(!b)return;
+  if(b.dataset.a==="login")admLogin();
+  else if(b.dataset.a==="logout"){AC=null;AERR="";audit("admin","admin","admin.logout","session","-","Admin chiqdi");try{sessionStorage.removeItem("sb-admin")}catch(x){}save();location.hash=""}
+  else{try{AERR="";adminAct(b.dataset.a,b.dataset)}catch(x){AERR=x.message}save();admRender()}
+});
+$("adm").addEventListener("change",e=>{if(e.target.id==="af"){AF=e.target.value;admRender()}else if(e.target.id==="apf"){APF=e.target.value;admRender()}});
+$("adm").addEventListener("keydown",e=>{if(e.key==="Enter"&&(e.target.id==="au"||e.target.id==="ap"))admLogin()});
+function route(){const ad=location.hash==="#admin";Auth.ctx=ad?"admin":"app";document.querySelector("main").hidden=ad;$("adm").hidden=!ad;document.title=ad?"SutBozor Admin":"SutBozor";if(ad)admRender();else render()}
+addEventListener("hashchange",route);
+route();
+</script>
+</body>
+</html>
