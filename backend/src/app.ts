@@ -2,7 +2,7 @@ import { randomUUID } from "node:crypto";
 import cors from "@fastify/cors";
 import helmet from "@fastify/helmet";
 import rateLimit from "@fastify/rate-limit";
-import Fastify, { type FastifyInstance } from "fastify";
+import Fastify, { type FastifyInstance, type FastifyServerOptions } from "fastify";
 import { buildLoggerOptions, logRequestCompleted } from "./logging/logger";
 import { corsOrigins, env, isProd } from "./config/env";
 import { errorHandler, notFoundHandler } from "./middleware/errorHandler";
@@ -22,15 +22,18 @@ export interface BuildAppOptions {
 }
 
 export async function buildApp(options: BuildAppOptions = {}): Promise<FastifyInstance> {
-  const app = Fastify({
-    logger: buildLoggerOptions(env.LOG_LEVEL),
+  // Aniq tur: Fastify oddiy HTTP/1 variantini tanlashi uchun (aks holda TypeScript HTTP/2 variantiga o'tib ketadi).
+  // `logger` ataylab `unknown` orqali o'giriladi: pino'ning ichki turlari bizning oddiy sozlamalarga qat'iy mos kelmaydi; mantiq testlarda tekshirilgan.
+  const serverOptions: FastifyServerOptions = {
+    logger: buildLoggerOptions(env.LOG_LEVEL) as unknown as FastifyServerOptions["logger"],
     disableRequestLogging: true, // o'rniga logRequestCompleted (tana va sarlavhasiz)
     genReqId: () => randomUUID(),
     trustProxy: env.TRUST_PROXY,
     bodyLimit: env.BODY_LIMIT_BYTES, // katta so'rov 413 bilan rad etiladi (errorHandler)
     requestTimeout: env.REQUEST_TIMEOUT_MS, // sekin yuboruvchi (slowloris) ulanishni band qilmasin
     maxParamLength: 100,
-  });
+  };
+  const app: FastifyInstance = Fastify(serverOptions);
 
   app.addHook("onRequest", async (request, reply) => {
     reply.header("x-request-id", request.id);

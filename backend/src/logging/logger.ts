@@ -7,7 +7,9 @@ import { scrub, scrubString, sanitizeUrl, serializeError } from "./redact";
  * Log'ga faqat: so'rov id, usul, marshrut shabloni, tozalangan yo'l, status, davomiylik, (kirgan bo'lsa) userId va rol.
  * Qo'shimcha himoya: har qanday log chaqiruvi (obyekt, matn, xato) logMethod hook'ida tozalanadi.
  */
-export function buildLoggerOptions(level: string) {
+export type LogLevel = "fatal" | "error" | "warn" | "info" | "debug" | "trace" | "silent";
+
+export function buildLoggerOptions(level: LogLevel) {
   return {
     level,
     redact: { paths: LOG_REDACT_PATHS, censor: "[REDACTED]" },

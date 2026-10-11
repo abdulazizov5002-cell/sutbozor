@@ -223,4 +223,4 @@ Keyingi bosqichda:
 
 ## Tekshirilganlik haqida
 
-`test:contract`, `test:telegram`, `test:rbac`, `test:logging` tarmoqsiz muhitda ishga tushirilgan va o'tgan. `test:http` yozilgan va TypeScript tekshiruvidan o'tgan, lekin Fastify o'rnatilmagani uchun **hali ishga tushirilmagan**. TypeScript tekshiruvi Fastify/Prisma o'rniga stub'lar bilan o'tkazilgan. `npm install`, haqiqiy server, Helmet/CORS/rate limit plaginlari va PostgreSQL bilan ishlash **birinchi marta shu mashinangizda** tekshirilishi kerak: `npm install && npm run prisma:generate && npm run typecheck && npm test`, so'ng `npm run dev` va `curl /api/health`.
+`test:contract`, `test:telegram`, `test:rbac`, `test:logging` tarmoqsiz muhitda ishga tushirilgan va o'tgan. `test:http` haqiqiy Fastify bilan (GitHub Codespaces, Node 22) ishga tushirilgan: 28 test, 28 o'tdi. TypeScript tekshiruvi Fastify/Prisma o'rniga stub'lar bilan o'tkazilgan. `npm install`, haqiqiy server, Helmet/CORS/rate limit plaginlari va PostgreSQL bilan ishlash **birinchi marta shu mashinangizda** tekshirilishi kerak: `npm install && npm run prisma:generate && npm run typecheck && npm test`, so'ng `npm run dev` va `curl /api/health`.
