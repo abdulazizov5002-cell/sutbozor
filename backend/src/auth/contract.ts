@@ -22,7 +22,7 @@ export interface LoginResponse {
 
 export const AUTH_ENDPOINTS = {
   me: { method: "GET", path: "/api/auth/me", status: "tayyor (strategiya ulangach ishlaydi)" },
-  telegramLogin: { method: "POST", path: "/api/auth/telegram", status: "tayyorlov: tuzilma tekshiriladi, tasdiqlash 501 (keyingi bosqichda HMAC)" },
+  telegramLogin: { method: "POST", path: "/api/auth/telegram", status: "tayyor: HMAC + auth_date tekshiruvi, bazadagi bog'langan foydalanuvchiga qisqa muddatli JWT. TELEGRAM_BOT_TOKEN, JWT_SECRET va baza bo'lmasa 501" },
   adminLogin: { method: "POST", path: "/api/auth/admin/login", status: "keyingi bosqich (alohida qattiq limit, 2FA)" },
   refresh: { method: "POST", path: "/api/auth/refresh", status: "keyingi bosqich" },
   logout: { method: "POST", path: "/api/auth/logout", status: "keyingi bosqich (sessiyani bekor qiladi)" },

@@ -18,7 +18,7 @@ Hozir backend quyidagilarni qiladi:
 - **Ma'lumotlar qatlami**: route -> controller -> service -> repository. Prisma/PostgreSQL implementatsiyasi yozilgan (13 model + Telegram hisobi), `DATABASE_URL` berilsa ulanadi.
 - **Faqat o'qish endpointlari**: ro'yxat va bitta yozuv (users, businesses, suppliers, products, orders, contracts, payments, disputes, notifications, admin audit log).
 - **Xavfsiz log**: so'rov logi tana va sarlavhasiz, parol/token/Telegram initData/sirlar/to'lov rekvizitlari yashiriladi.
-- **Telegram tayyorgarligi**: initData tuzilmasi tekshiriladi, kriptografik tekshiruv va kirish hali yo'q.
+- **Telegram kirishi**: initData HMAC bilan tekshiriladi, bog'langan foydalanuvchiga qisqa muddatli JWT beriladi (rol bazadan). Sirlar yo'q bo'lsa 501.
 
 Hozir **yo'q**: haqiqiy autentifikatsiya (token/sessiya), yozish endpointlari (yaratish/o'zgartirish), seed ma'lumotlar, to'lov provayderlari.
 Platforma komissiyasi **0%** (`PLATFORM_COMMISSION_PERCENT = 0`, muhit o'zgaruvchisidan olinmaydi), pul summalari bazada `BigInt` (butun so'm).
@@ -95,6 +95,7 @@ npm test                # hammasi ketma-ket
 npm run test:contract   # xato xaritasi, 404, CORS/Helmet sozlamasi, validatsiya, health (Fastify'siz)
 npm run test:http       # haqiqiy Fastify: app.inject() bilan health, 404, buzilgan JSON, validatsiya, CORS, error handler, rate limit
 npm run test:telegram   # initData tahlili, Telegram hisob saqlash
+npm run test:auth       # HMAC (mustaqil vektor), JWT, login oqimi, Bearer
 npm run test:rbac       # requireAuth / requireRole
 npm run test:logging    # log tozalash
 npm run check:secrets   # maxfiy ma'lumot skaneri
@@ -203,23 +204,29 @@ Qoidalar: pul `BigInt` (butun so'm), API'da `number`; komissiya 0% bazada CHECK 
 
 ---
 
-## 10. Telegram authentication keyingi bosqichi
+## 10. Telegram authentication (ishlaydi) va keyingi qadamlar
 
-Hozirgi holat (`docs/TELEGRAM.md`): `POST /api/auth/telegram` faqat `{ "initData": "..." }` qabul qiladi (`role`, `userId` kabi maydonlar 400). initData **tuzilmasi** tekshiriladi (uzunlik va maydon chegaralari, `hash` shakli, `auth_date`, `user` JSON), noto'g'ri bo'lsa `400 INVALID_INIT_DATA`, to'g'ri bo'lsa `501`. Imzo tekshirilmaydi, token berilmaydi.
+**Hozirgi holat** (`docs/TELEGRAM.md`, `docs/ADMIN_BOOTSTRAP.md`): `POST /api/auth/telegram` faqat `{ "initData": "..." }` qabul qiladi (`role`, `userId` kabi maydonlar 400). Tartib:
+1. initData tuzilmasi tekshiriladi (`400 INVALID_INIT_DATA`).
+2. **Imzo**: `secret = HMAC_SHA256("WebAppData", BOT_TOKEN)`, `HMAC_SHA256(secret, dataCheckString)` `hash` bilan doimiy vaqtda solishtiriladi, `auth_date` yangiligi tekshiriladi (`TELEGRAM_INIT_DATA_MAX_AGE_SEC`). Muvaffaqiyatsiz: `401`.
+3. `TelegramAccount` profili yangilanadi (rolga tegmaydi).
+4. Hisob foydalanuvchiga bog'lanmagan bo'lsa: `403 ACCOUNT_NOT_LINKED`, token berilmaydi.
+5. **Rol va holat faqat bazadagi `User` dan**; faol bo'lmasa `403`. Frontend yuborgan rolga ishonilmaydi.
+6. Qisqa muddatli JWT (HS256, `ACCESS_TOKEN_TTL_MIN`, standart 15 daqiqa) beriladi. Tokenda rol yo'q. Har so'rovda `Bearer` token tekshirilib, foydalanuvchi va uning roli bazadan olinadi, shuning uchun bloklangan foydalanuvchi darhol 403 oladi.
 
-Keyingi bosqichda:
-1. **Imzoni tekshirish** (`TelegramVerifier`): `secret = HMAC_SHA256("WebAppData", BOT_TOKEN)`, `HMAC_SHA256(secret, dataCheckString)` ni `hash` bilan doimiy vaqtda solishtirish, `auth_date` yangiligi (`TELEGRAM_INIT_DATA_MAX_AGE_SEC`). Yozishdan oldin Telegram'ning joriy hujjati bilan solishtiring.
-2. **Hisob**: tasdiqlangan identifikator bo'yicha `TelegramAccount` yaratish/yangilash (Prisma saqlash kodi yozilgan, `container` ga hali ulanmagan).
-3. **Rol faqat serverda**: rol `TelegramAccount.userId` orqali bog'langan `User.role` dan olinadi. Bog'lanmagan hisob hech qanday huquq olmaydi. Frontend yuborgan rolga ishonilmaydi.
-4. **Token va sessiya**: `TokenService`, `SessionStore`, `setAuthStrategy(createBearerStrategy(...))`. Shundan keyin `requireRole(...)` va barcha himoyalangan route'lar ishlay boshlaydi.
-5. **Admin kirishi**: Telegramdan alohida (argon2id parol, 2FA). Frontenddagi `admin/admin123`, frontend rol tekshiruvi va frontend-only autentifikatsiya olib tashlanadi (reja `docs/SECURITY.md` da).
-6. Kerakli sozlamalar: `TELEGRAM_BOT_TOKEN`, `JWT_SECRET` (`.env` da, kodda emas).
+Yoqish uchun uchta narsa kerak: `DATABASE_URL`, `TELEGRAM_BOT_TOKEN`, `JWT_SECRET`. Biri yo'q bo'lsa tegishli qism fail-closed qoladi (501), server ishga tushadi.
+
+**Keyingi bosqichlar (hali yo'q):**
+- Ro'yxatdan o'tish: Business/Supplier o'zi hisob yaratishi (rolni foydalanuvchi tanlaydi, `admin` esa hech qachon o'zi tanlanmaydi), admin tasdiqlashi. Hozircha birinchi admin qo'lda yaratiladi (`docs/ADMIN_BOOTSTRAP.md`).
+- Frontend: `useBackend` yoqilib, `/api/auth/telegram` chaqiriladi va `admin/admin123` olib tashlanadi (`docs/SECURITY.md`).
+- Sessiyani bekor qilish (logout): sessiya jadvali qo'shilgach. Hozircha token 15 daqiqada tugaydi, bloklash esa darhol ishlaydi.
+- Admin uchun alohida kirish (argon2id parol, 2FA).
 
 ---
 
 ## Qo'shimcha hujjatlar
 
-`docs/AUDIT.md` (frontend audit), `docs/DOMAIN_MODEL.md`, `docs/VALIDATION.md`, `docs/SECURITY.md`, `docs/LOGGING.md`, `docs/TELEGRAM.md`, frontend ulash: `../docs/FRONTEND_INTEGRATION.md`.
+`docs/AUDIT.md` (frontend audit), `docs/DOMAIN_MODEL.md`, `docs/VALIDATION.md`, `docs/SECURITY.md`, `docs/LOGGING.md`, `docs/TELEGRAM.md`, `docs/ADMIN_BOOTSTRAP.md`, frontend ulash: `../docs/FRONTEND_INTEGRATION.md`.
 
 ## Tekshirilganlik haqida
 

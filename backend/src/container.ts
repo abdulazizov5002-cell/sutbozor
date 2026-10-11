@@ -1,4 +1,4 @@
-import type { TelegramVerifier } from "./auth/ports";
+import type { TelegramAccountStore, TelegramVerifier, TokenService } from "./auth/ports";
 import { createUnimplementedTelegramVerifier } from "./auth/telegram/verifier";
 import { createAuthController } from "./controllers/auth.controller";
 import { entityController } from "./controllers/entity.controller";
@@ -13,6 +13,10 @@ import { createServices } from "./services";
 export interface ContainerOptions {
   /** Keyingi bosqichda haqiqiy Telegram tasdiqlovchisi shu yerga beriladi. Standart: har doim 501 (fail-closed). */
   telegramVerifier?: TelegramVerifier;
+  /** Telegram hisoblari ombori (Prisma). Berilmasa kirish 501. */
+  telegramAccounts?: TelegramAccountStore;
+  /** Sessiya tokenlari (JWT). Berilmasa kirish 501. */
+  tokens?: TokenService;
 }
 
 export function buildContainer(repositories: Repositories = notImplementedRepositories(), options: ContainerOptions = {}) {
@@ -28,7 +32,12 @@ export function buildContainer(repositories: Repositories = notImplementedReposi
     disputes: entityController(services.disputes),
     notifications: entityController(services.notifications),
     auditLogs: entityController(services.audit),
-    auth: createAuthController({ telegramVerifier: options.telegramVerifier ?? createUnimplementedTelegramVerifier() }),
+    auth: createAuthController({
+      telegramVerifier: options.telegramVerifier ?? createUnimplementedTelegramVerifier(),
+      accounts: options.telegramAccounts,
+      users: repositories.users,
+      tokens: options.tokens,
+    }),
   };
   return { services, controllers };
 }

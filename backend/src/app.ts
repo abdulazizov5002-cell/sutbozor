@@ -7,7 +7,7 @@ import { buildLoggerOptions, logRequestCompleted } from "./logging/logger";
 import { corsOrigins, env, isProd } from "./config/env";
 import { errorHandler, notFoundHandler } from "./middleware/errorHandler";
 import "./validation/errorMap";
-import type { TelegramVerifier } from "./auth/ports";
+import type { TelegramAccountStore, TelegramVerifier, TokenService } from "./auth/ports";
 import { buildContainer } from "./container";
 import type { Repositories } from "./repositories/ports";
 import { createApiRoutes } from "./routes";
@@ -19,6 +19,10 @@ export interface BuildAppOptions {
   repositories?: Repositories;
   /** Keyingi bosqichda haqiqiy Telegram tasdiqlovchisi. Berilmasa, Telegram kirishi 501 qaytaradi. */
   telegramVerifier?: TelegramVerifier;
+  /** Telegram hisoblari ombori (baza ulanganda). */
+  telegramAccounts?: TelegramAccountStore;
+  /** Sessiya tokenlari (JWT_SECRET berilganda). */
+  tokens?: TokenService;
 }
 
 export async function buildApp(options: BuildAppOptions = {}): Promise<FastifyInstance> {
@@ -55,6 +59,10 @@ export async function buildApp(options: BuildAppOptions = {}): Promise<FastifyIn
   app.setErrorHandler(errorHandler);
   app.setNotFoundHandler(notFoundHandler);
 
-  await app.register(createApiRoutes(buildContainer(options.repositories, options.telegramVerifier ? { telegramVerifier: options.telegramVerifier } : {})), { prefix: "/api" });
+  await app.register(createApiRoutes(buildContainer(options.repositories, {
+    ...(options.telegramVerifier ? { telegramVerifier: options.telegramVerifier } : {}),
+    ...(options.telegramAccounts ? { telegramAccounts: options.telegramAccounts } : {}),
+    ...(options.tokens ? { tokens: options.tokens } : {}),
+  })), { prefix: "/api" });
   return app;
 }
