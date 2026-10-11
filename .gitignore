@@ -1,0 +1,24 @@
+# Sirlar va muhit fayllari: HECH QACHON git'ga qo'shilmaydi
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+*.p12
+*.pfx
+secrets/
+credentials*.json
+service-account*.json
+
+# Build va bog'liqliklar
+node_modules/
+dist/
+coverage/
+logs/
+*.log
+npm-debug.log*
+*.tsbuildinfo
+
+# Tizim fayllari
+.DS_Store
+Thumbs.db

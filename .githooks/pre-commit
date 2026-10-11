@@ -1,0 +1,6 @@
+#!/bin/sh
+# Commit oldidan maxfiy ma'lumotni tekshiradi. Yoqish (bir marta): git config core.hooksPath .githooks
+node backend/scripts/check-secrets.js --staged || {
+  echo "Commit to'xtatildi: maxfiy ma'lumot topildi (yuqoriga qarang)."
+  exit 1
+}

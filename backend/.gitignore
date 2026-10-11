@@ -1,0 +1,18 @@
+# Sirlar va muhit fayllari: HECH QACHON git'ga qo'shilmaydi (.env.example faqat joy egalari bilan)
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+*.p12
+*.pfx
+secrets/
+
+node_modules/
+dist/
+coverage/
+logs/
+*.log
+npm-debug.log*
+*.tsbuildinfo
+.DS_Store

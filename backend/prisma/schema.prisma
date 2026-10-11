@@ -1,0 +1,383 @@
+// SutBozor ma'lumotlar bazasi sxemasi (PostgreSQL).
+// HOLAT: QORALAMA (DRAFT). Migratsiya yaratilmagan, baza ulanmagan. Biznes jadvallari Database bosqichida tasdiqlanib, shundan keyin migratsiya qilinadi.
+// Server DATABASE_URL berilmaguncha bu sxemadan foydalanmaydi (entity endpointlari 501 qaytaradi).
+// Pul summalari BigInt (butun so'm). API da number, aylantirish src/repositories/prisma/mappers.ts da.
+// CHECK constraint va audit_logs triggerlari prisma/constraints.sql da (Prisma ularni sxemada qo'llamaydi).
+// Birinchi marta: npx prisma migrate dev --name init --create-only, so'ng constraints.sql ni migratsiya oxiriga qo'shing.
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum Role {
+  business
+  supplier
+  admin
+}
+
+enum UserStatus {
+  ACTIVE
+  BLOCKED
+  PENDING
+}
+
+enum Unit {
+  L
+  kg
+}
+
+enum DeliveryMode {
+  supplier
+  pickup
+}
+
+enum PaymentSchedule {
+  DELIVERY
+  WEEKLY
+  MONTHLY
+  PREPAID
+}
+
+enum OrderItemStatus {
+  SENT
+  ACTIVE
+  PAUSED
+  COMPLETED
+  CANCELLED
+}
+
+enum DeliveryStatus {
+  SCHEDULED
+  PREPARING
+  READY
+  IN_TRANSIT
+  DELIVERED
+}
+
+enum ContractStatus {
+  DRAFT
+  PENDING
+  ACTIVE
+  PAUSED
+  COMPLETED
+  CANCELLED
+}
+
+enum PaymentStatus {
+  PENDING
+  PAYMENT_SUBMITTED
+  PAID
+  OVERDUE
+  CANCELLED
+  DISPUTED
+}
+
+enum DisputeStatus {
+  OPEN
+  UNDER_REVIEW
+  RESOLVED
+  REJECTED
+  CLOSED
+}
+
+enum DisputeReason {
+  NOT_DELIVERED
+  WRONG_QTY
+  QUALITY
+  PAYMENT
+  LATE
+  PRICE
+  OTHER
+}
+
+enum RatingSide {
+  TO_SUPPLIER
+  TO_BUSINESS
+}
+
+model User {
+  id            String         @id @default(uuid())
+  name          String
+  phone         String         @unique
+  email         String         @unique
+  role          Role
+  status        UserStatus     @default(PENDING)
+  businessId    String?
+  supplierId    String?
+  business      Business?      @relation(fields: [businessId], references: [id])
+  supplier      Supplier?      @relation(fields: [supplierId], references: [id])
+  notifications Notification[]
+  disputes      Dispute[]
+  telegram      TelegramAccount?
+  createdAt     DateTime       @default(now())
+  lastLoginAt   DateTime?
+
+  @@index([businessId])
+  @@index([supplierId])
+  @@map("users")
+}
+
+model Business {
+  id          String     @id @default(uuid())
+  name        String
+  type        String
+  area        String
+  address     String
+  rating      Float      @default(0)
+  ratingCount Int        @default(0)
+  createdAt   DateTime   @default(now())
+  users       User[]
+  orders      Order[]
+  contracts   Contract[]
+  payments    Payment[]
+  disputes    Dispute[]
+
+  @@map("businesses")
+}
+
+model Supplier {
+  id               String      @id @default(uuid())
+  name             String
+  area             String
+  deliveryRadiusKm Int
+  rating           Float       @default(0)
+  ratingCount      Int         @default(0)
+  createdAt        DateTime    @default(now())
+  users            User[]
+  products         Product[]
+  orderItems       OrderItem[]
+  contracts        Contract[]
+  payments         Payment[]
+  disputes         Dispute[]
+
+  @@map("suppliers")
+}
+
+model Product {
+  id             String   @id @default(uuid())
+  supplierId     String
+  supplier       Supplier @relation(fields: [supplierId], references: [id], onDelete: Cascade)
+  name           String
+  unit           Unit
+  availableToday Decimal  @default(0) @db.Decimal(10, 2)
+  dailyCapacity  Decimal  @default(0) @db.Decimal(10, 2)
+  pricePerUnit   BigInt
+
+  @@unique([supplierId, name])
+  @@map("products")
+}
+
+model Order {
+  id              String          @id @default(uuid())
+  publicId        String          @unique
+  businessId      String
+  business        Business        @relation(fields: [businessId], references: [id])
+  product         String
+  quantityPerDay  Decimal         @db.Decimal(10, 2)
+  days            Int
+  deliveryMode    DeliveryMode
+  paymentSchedule PaymentSchedule
+  prepTime        String
+  createdAt       DateTime        @default(now())
+  updatedAt       DateTime        @updatedAt
+  items           OrderItem[]
+  contracts       Contract[]
+  payments        Payment[]
+  disputes        Dispute[]
+
+  @@index([businessId])
+  @@map("orders")
+}
+
+model OrderItem {
+  id             String          @id @default(uuid())
+  orderId        String
+  order          Order           @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  supplierId     String
+  supplier       Supplier        @relation(fields: [supplierId], references: [id])
+  quantityPerDay Decimal         @db.Decimal(10, 2)
+  pricePerUnit   BigInt
+  status         OrderItemStatus @default(SENT)
+  deliveryStatus DeliveryStatus  @default(SCHEDULED)
+  daysDelivered  Int             @default(0)
+  contractId     String?         @unique
+  contract       Contract?       @relation(fields: [contractId], references: [id])
+  ratings        Rating[]
+
+  @@index([orderId])
+  @@index([supplierId])
+  @@map("order_items")
+}
+
+model Contract {
+  id              String          @id @default(uuid())
+  publicId        String          @unique
+  orderId         String?
+  order           Order?          @relation(fields: [orderId], references: [id])
+  businessId      String
+  business        Business        @relation(fields: [businessId], references: [id])
+  supplierId      String
+  supplier        Supplier        @relation(fields: [supplierId], references: [id])
+  product         String
+  quantityPerDay  Decimal         @db.Decimal(10, 2)
+  unit            Unit
+  pricePerUnit    BigInt
+  days            Int
+  startDate       DateTime        @db.Date
+  endDate         DateTime        @db.Date
+  paymentSchedule PaymentSchedule
+  deliveryMode    DeliveryMode
+  status          ContractStatus  @default(DRAFT)
+  createdAt       DateTime        @default(now())
+  orderItem       OrderItem?
+  payments        Payment[]
+  disputes        Dispute[]
+
+  @@index([businessId])
+  @@index([supplierId])
+  @@map("contracts")
+}
+
+model Payment {
+  id                 String          @id @default(uuid())
+  publicId           String          @unique
+  orderId            String
+  order              Order           @relation(fields: [orderId], references: [id])
+  contractId         String
+  contract           Contract        @relation(fields: [contractId], references: [id])
+  businessId         String
+  business           Business        @relation(fields: [businessId], references: [id])
+  supplierId         String
+  supplier           Supplier        @relation(fields: [supplierId], references: [id])
+  amount             BigInt
+  currency           String          @default("UZS")
+  paymentPeriod      PaymentSchedule
+  periodNo           Int
+  fromDay            Int
+  toDay              Int
+  days               Int
+  dueDate            DateTime        @db.Date
+  paidAt             DateTime?       @db.Date
+  paymentMethod      String?
+  transactionId      String?         @unique
+  status             PaymentStatus   @default(PENDING)
+  note               String          @default("")
+  platformCommission BigInt          @default(0)
+  grossAmount        BigInt
+  supplierAmount     BigInt
+  createdAt          DateTime        @default(now())
+  updatedAt          DateTime        @updatedAt
+  disputes           Dispute[]
+
+  @@index([status, dueDate])
+  @@index([businessId])
+  @@index([supplierId])
+  @@index([contractId])
+  @@map("payments")
+}
+
+model Dispute {
+  id          String        @id @default(uuid())
+  publicId    String        @unique
+  orderId     String
+  order       Order         @relation(fields: [orderId], references: [id])
+  paymentId   String?
+  payment     Payment?      @relation(fields: [paymentId], references: [id])
+  contractId  String?
+  contract    Contract?     @relation(fields: [contractId], references: [id])
+  openedBy    Role
+  openedById  String
+  openedByUser User         @relation(fields: [openedById], references: [id])
+  businessId  String
+  business    Business      @relation(fields: [businessId], references: [id])
+  supplierId  String
+  supplier    Supplier      @relation(fields: [supplierId], references: [id])
+  reason      DisputeReason
+  description String
+  status      DisputeStatus @default(OPEN)
+  createdAt   DateTime      @default(now())
+  resolvedAt  DateTime?
+  resolution  String?
+  resolvedBy  String?
+
+  @@index([status])
+  @@index([businessId])
+  @@index([supplierId])
+  @@map("disputes")
+}
+
+model Notification {
+  id        String   @id @default(uuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  type      String
+  title     String
+  message   String
+  read      Boolean  @default(false)
+  createdAt DateTime @default(now())
+
+  @@index([userId, read])
+  @@map("notifications")
+}
+
+/// Faqat INSERT. UPDATE/DELETE trigger bilan taqiqlanadi (constraints.sql). Foydalanuvchi o'chsa ham yozuv qoladi, shuning uchun FK yo'q.
+model AuditLog {
+  id          String   @id @default(uuid())
+  ts          DateTime @default(now())
+  actorId     String?
+  actorName   String
+  actorRole   String
+  action      String
+  objectType  String
+  objectId    String
+  description String
+
+  @@index([ts])
+  @@index([objectType, objectId])
+  @@map("audit_logs")
+}
+
+/// Ikki tomonlama baho: har bir OrderItem uchun har tomondan bittadan. Ikkala tomon baholagach ochiladi.
+model Rating {
+  id          String     @id @default(uuid())
+  orderItemId String
+  orderItem   OrderItem  @relation(fields: [orderItemId], references: [id], onDelete: Cascade)
+  side        RatingSide
+  scores      Json
+  comment     String     @default("")
+  createdAt   DateTime   @default(now())
+
+  @@unique([orderItemId, side])
+  @@map("ratings")
+}
+
+/// Ko'rinadigan ID'lar (SB-1001, PAY-7, CT-3, DSP-2) uchun atomik hisoblagich.
+model Sequence {
+  name  String @id
+  value Int    @default(0)
+
+  @@map("sequences")
+}
+
+/// Tasdiqlangan Telegram identifikatori. Rol bu yerda YO'Q: u faqat bog'langan User'da (userId) bo'ladi.
+/// userId null bo'lsa hisob hech qanday huquq olmaydi. Profil maydonlari faqat kriptografik tekshiruvdan o'tgan initData'dan yoziladi.
+model TelegramAccount {
+  id           String    @id @default(uuid())
+  telegramId   BigInt    @unique
+  username     String?
+  firstName    String
+  lastName     String?
+  photoUrl     String?
+  languageCode String?
+  userId       String?   @unique
+  user         User?     @relation(fields: [userId], references: [id], onDelete: SetNull)
+  firstSeenAt  DateTime  @default(now())
+  lastLoginAt  DateTime?
+
+  @@map("telegram_accounts")
+}
