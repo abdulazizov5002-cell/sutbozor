@@ -72,8 +72,20 @@ pre.sc{background:var(--bg);border:1px solid var(--line);border-radius:10px;padd
 <nav class="nav" id="nav" aria-label="Bo'limlar"></nav>
 <div id="app"></div>
 <p class="hint" id="foot" style="text-align:center;margin-top:16px"></p>
+<p class="hint" id="srv" style="text-align:center"></p>
 </main>
 <div id="adm" hidden></div>
+<!-- Telegram Mini App kutubxonasi (initData beradi). Telegramdan tashqarida ham sahifa avvalgidek ishlaydi. -->
+<script src="https://telegram.org/js/telegram-web-app.js"></script>
+<!-- Backend integratsiya qatlami (env.js da useBackend=false bo'lsa ishlatilmaydi). Fayllar topilmasa sahifa avvalgidek ishlaydi. -->
+<script src="env.js"></script>
+<script src="js/config.js"></script>
+<script src="js/api/apiClient.js"></script>
+<script src="js/api/authService.js"></script>
+<script src="js/api/productService.js"></script>
+<script src="js/api/orderService.js"></script>
+<script src="js/api/paymentService.js"></script>
+<script src="js/api/index.js"></script>
 <script>
 const $=id=>document.getElementById(id);
 const esc=s=>String(s).replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
@@ -98,12 +110,26 @@ const SUP0=[
 {id:"F",name:"Yusupovlar xo'jaligi",area:"Do'stlik",radius:5,rating:3.9,n:5,products:[PS("Sut",4,5,16500)]},
 {id:"G",name:"Nazarovlar xo'jaligi",area:"Navbahor",radius:8,rating:4.7,n:26,products:[PS("Sut",9,10,12000)]}];
 /* ===== 1-BOSQICH: konfiguratsiya, rollar, audit, to'lovlar (backendga ko'chirishga tayyor tuzilma) ===== */
-const CONFIG={platformCommission:0,currency:"so'm",paymentPeriodDays:7,paymentProvider:"manual",deliveryGapMin:{supplier:40,pickup:20}}; // komissiya 0%: supplier to'liq summani oladi
+const CONFIG={platformCommission:0,currency:"so'm",paymentPeriodDays:7,paymentProvider:"manual",deliveryGapMin:{supplier:40,pickup:20},timezone:"Asia/Tashkent",confirmDays:3,adminSessionMin:30}; // komissiya 0%: supplier to'liq summani oladi
 const ROLES=["business","supplier","admin"]; // admin oddiy interfeysda ko'rinmaydi, faqat alohida #admin kirish orqali
 /* DEMO ONLY. Login va parolni frontend kodida saqlash real production uchun XAVFSIZ EMAS: kod hammaga ochiq.
    Production: server tomonida autentifikatsiya, parol xeshi (argon2/bcrypt), httpOnly sessiya yoki JWT,
    2FA, urinishlar limiti va serverdagi rol tekshiruvi (admin API faqat admin roliga ochiq). */
-const ADMIN_DEMO={username:"admin",password:"admin123"};
+const ADMIN_DEMO={username:"admin",passHash:"240be518fabd2724ddb6f04eeb1da5967448d7e831c08c8fa822809f74c720a9"}; // admin123 ning SHA-256 xeshi: ochiq matn kodda yo'q, lekin bu ham real himoya emas (xesh frontendda ko'rinadi, oflayn taxmin qilinadi)
+function sha256(str){
+  const K=[1116352408,1899447441,3049323471,3921009573,961987163,1508970993,2453635748,2870763221,3624381080,310598401,607225278,1426881987,1925078388,2162078206,2614888103,3248222580,3835390401,4022224774,264347078,604807628,770255983,1249150122,1555081692,1996064986,2554220882,2821834349,2952996808,3210313671,3336571891,3584528711,113926993,338241895,666307205,773529912,1294757372,1396182291,1695183700,1986661051,2177026350,2456956037,2730485921,2820302411,3259730800,3345764771,3516065817,3600352804,4094571909,275423344,430227734,506948616,659060556,883997877,958139571,1322822218,1537002063,1747873779,1955562222,2024104815,2227730452,2361852424,2428436474,2756734187,3204031479,3329325298];
+  const H=[1779033703,3144134277,1013904242,2773480762,1359893119,2600822924,528734635,1541459225];
+  const m=Array.from(new TextEncoder().encode(str)),l=m.length,R=(x,n)=>(x>>>n)|(x<<(32-n));
+  m.push(128);while(m.length%64!==56)m.push(0);
+  for(const v of[Math.floor(l*8/4294967296),(l*8)>>>0])for(let i=3;i>=0;i--)m.push((v>>>(i*8))&255);
+  for(let o=0;o<m.length;o+=64){
+    const w=new Array(64);for(let i=0;i<16;i++)w[i]=(m[o+4*i]<<24)|(m[o+4*i+1]<<16)|(m[o+4*i+2]<<8)|m[o+4*i+3];
+    for(let i=16;i<64;i++){const q0=R(w[i-15],7)^R(w[i-15],18)^(w[i-15]>>>3),q1=R(w[i-2],17)^R(w[i-2],19)^(w[i-2]>>>10);w[i]=(w[i-16]+q0+w[i-7]+q1)>>>0}
+    let a=H[0],b=H[1],c=H[2],d=H[3],e=H[4],f=H[5],g=H[6],h=H[7];
+    for(let i=0;i<64;i++){const t1=(h+(R(e,6)^R(e,11)^R(e,25))+((e&f)^(~e&g))+K[i]+w[i])>>>0,t2=((R(a,2)^R(a,13)^R(a,22))+((a&b)^(a&c)^(b&c)))>>>0;h=g;g=f;f=e;e=(d+t1)>>>0;d=c;c=b;b=a;a=(t1+t2)>>>0}
+    [a,b,c,d,e,f,g,h].forEach((v,i)=>{H[i]=(H[i]+v)>>>0})}
+  return H.map(x=>x.toString(16).padStart(8,"0")).join("")}
+const rndHex=()=>{const a=new Uint8Array(16);globalThis.crypto.getRandomValues(a);return Array.from(a,b=>b.toString(16).padStart(2,"0")).join("")};
 const dm=s=>s.split("-").reverse().join(".");
 const dt=s=>{const d=new Date(s);return pad(d.getDate())+"."+pad(d.getMonth()+1)+"."+d.getFullYear()+" "+pad(d.getHours())+":"+pad(d.getMinutes())};
 /* audit_log yozuvi: {id,ts,actor,role,action,type,oid,desc} */
@@ -115,7 +141,8 @@ const PT={PENDING:["Kutilmoqda","w"],PAYMENT_SUBMITTED:["Tasdiqlash kutilmoqda",
 const CST={DRAFT:["Qoralama","n"],PENDING:["Kutilmoqda","w"],ACTIVE:["Faol",""],PAUSED:["To'xtatilgan","w"],COMPLETED:["Yakunlangan",""],CANCELLED:["Bekor qilingan","x"]};
 const ctag=st=>`<span class="tag ${CST[st][1]}">${CST[st][0]}</span>`;
 const payState=x=>x.status;
-const today=()=>new Date().toISOString().slice(0,10);
+/* Sanalar brauzer zonasiga emas, biznes zonasiga (CONFIG.timezone) qarab olinadi: OVERDUE va "muddat yaqin" mahalliy yarim tunda almashadi */
+const today=()=>{try{return new Intl.DateTimeFormat("en-CA",{timeZone:CONFIG.timezone,year:"numeric",month:"2-digit",day:"2-digit"}).format(new Date())}catch(e){return new Date(Date.now()+5*36e5).toISOString().slice(0,10)}};
 const addD=(d,n)=>new Date(Date.parse(d)+n*864e5).toISOString().slice(0,10);
 const fee=a=>Math.round(a*CONFIG.platformCommission/100); // platformCommission=0, shuning uchun grossAmount = supplierAmount
 /* Provider interfeysi: {name, methods[], initiate(payment)->{ref,redirectUrl}, verify(payment,data)->{ok,transactionId}}.
@@ -147,10 +174,11 @@ sync(){const now=today(),ts=new Date().toISOString();
   S.orders.forEach(o=>o.parts.forEach(p=>{const c=S.contracts.find(x=>x.id===p.contractId);if(!c)return;const st=p.st==="SENT"?"PENDING":p.st;if(c.status===st)return;
     c.status=st;audit("Tizim","system","contract.status","contract",c.id,"Holat: "+CST[st][0]);
     if(st==="ACTIVE"&&!c.activated){c.activated=true;c.startDate=now;c.endDate=addD(now,o.days-1);this.schedule(S,o,p,c,now,0)}
-    if(st==="CANCELLED")S.pay.forEach(x=>{if(x.contractId===c.id&&(x.status==="PENDING"||x.status==="OVERDUE")){x.status="CANCELLED";x.updatedAt=ts;audit("Tizim","system","payment.cancelled","payment",x.id,"Shartnoma bekor qilindi")}})}));
+    if(st==="CANCELLED")S.pay.forEach(x=>{if(x.contractId===c.id&&(x.status==="PENDING"||x.status==="OVERDUE")){x.status="CANCELLED";x.updatedAt=ts;audit("Tizim","system","payment.cancelled","payment",x.id,"Shartnoma bekor qilindi")}else if(x.contractId===c.id&&x.status==="PAYMENT_SUBMITTED"&&!x.cancelNote){x.cancelNote=true;x.note=((x.note?x.note+" ":"")+"Shartnoma bekor qilindi: to'lovni tasdiqlang yoki nizo oching.").slice(0,300);x.updatedAt=ts;[Notify.sup(x.supplierId),Notify.biz(x.businessId)].forEach(t=>Notify.send(t,"contract.cancelled","Bekor qilingan shartnoma to'lovi",x.id+": yuborilgan to'lov hal qilinishi kerak (tasdiqlash yoki nizo)"))}})}));
   S.pay.forEach(x=>{
     if(x.status==="PENDING"&&x.dueDate<now){x.status="OVERDUE";x.updatedAt=ts;audit("Tizim","system","payment.overdue","payment",x.id,x.orderId+": muddat o'tdi ("+dm(x.dueDate)+")");[Notify.biz(x.businessId),Notify.sup(x.supplierId)].forEach(t=>Notify.send(t,"payment.overdue","To'lov kechikdi",x.orderId+" #"+x.seq+": "+fmt(x.amount)+" so'm"))}
-    else if(x.status==="PENDING"&&!x.soon&&x.dueDate<=addD(now,2)){x.soon=true;Notify.send(Notify.biz(x.businessId),"payment.due","To'lov muddati yaqin",x.orderId+" #"+x.seq+": "+fmt(x.amount)+" so'm, muddat "+dm(x.dueDate))}})},
+    else if(x.status==="PENDING"&&!x.soon&&x.dueDate<=addD(now,2)){x.soon=true;Notify.send(Notify.biz(x.businessId),"payment.due","To'lov muddati yaqin",x.orderId+" #"+x.seq+": "+fmt(x.amount)+" so'm, muddat "+dm(x.dueDate))}
+    if(x.status==="PAYMENT_SUBMITTED"&&!x.staleNotified&&addD(String(x.updatedAt).slice(0,10),CONFIG.confirmDays)<=now){x.staleNotified=true;Notify.send(Notify.sup(x.supplierId),"payment.unconfirmed","To'lovni tasdiqlang",x.orderId+" #"+x.seq+": "+fmt(x.amount)+" so'm "+CONFIG.confirmDays+" kundan beri tasdiqlanmagan");Notify.admins("payment.unconfirmed","Tasdiqlanmagan to'lov",x.id+": "+CONFIG.confirmDays+" kundan beri tasdiqlanmagan");audit("Tizim","system","payment.unconfirmed","payment",x.id,"Supplier "+CONFIG.confirmDays+" kundan beri tasdiqlamadi")}})},
 /* Business: PENDING | OVERDUE | DISPUTED → PAYMENT_SUBMITTED. Validatsiya xatosi matn qaytaradi, ruxsat xatosi Error tashlaydi */
 submit(id,d){const u=Auth.require("payments.submit"),x=S.pay.find(y=>y.id===id);
   if(!x||x.businessId!==u.businessId)return"To'lov topilmadi.";
@@ -180,7 +208,10 @@ supplier:["products.manage","orders.view","orders.accept","orders.reject","deliv
 const auditU=(u,action,type,oid,desc)=>audit(u.name,u.role,action,type,oid,desc);
 /* Auth: hozirgi foydalanuvchi va ruxsat. Kelajakda current() JWT/session'dan user oladi, login() serverga almashadi */
 const Auth={ctx:"app",
- current(){if(this.ctx==="admin"){let id=null;try{id=sessionStorage.getItem("sb-admin")}catch(e){}const u=S.users.find(x=>x.id===id);return u&&u.role==="admin"?u:null}return S.users.find(x=>x.id===S.uid)||null},
+ /* Admin sessiyasi: kirishda yaratilgan tasodifiy token (muddati bor). sessionStorage'ga foydalanuvchi ID'sini yozib kirib bo'lmaydi.
+    Frontend-only bo'lgani uchun token baribir brauzerda turadi: haqiqiy himoya serverdagi sessiya/JWT bo'ladi. */
+ adminUser(){let t=null;try{t=sessionStorage.getItem("sb-admin")}catch(e){}if(!t||!/^[0-9a-f]{32}$/.test(t))return null;const now=Date.now(),ss=(S.sessions||[]).find(x=>x.t===t&&x.exp>now);if(!ss)return null;ss.exp=now+CONFIG.adminSessionMin*60000;const u=S.users.find(x=>x.id===ss.uid);return u&&u.role==="admin"&&u.status==="ACTIVE"?u:null},
+ current(){if(this.ctx==="admin"){return this.adminUser()}return S.users.find(x=>x.id===S.uid)||null},
  can(perm,u){u=u||this.current();return!!u&&u.status==="ACTIVE"&&(ROLE_PERMS[u.role]||[]).includes(perm)},
  require(perm){const u=this.current();if(!this.can(perm,u)){audit(u?u.name:"anonim",u?u.role:"system","permission.denied","permission",perm,"Ruxsat rad etildi: "+perm);throw new Error(!u?"Kirish talab qilinadi.":u.status!=="ACTIVE"?"Hisobingiz faol emas ("+u.status+"), harakat mumkin emas.":"Ruxsat yo'q: "+perm)}return u},
  login(uid){const u=S.users.find(x=>x.id===uid);if(!u||u.role==="admin")return false;S.uid=u.id;S.role=u.role;if(u.supplierId)S.sup=u.supplierId;u.lastLoginAt=new Date().toISOString();audit(u.name,u.role,"auth.login","user",u.id,"Tizimga kirdi");return true}};
@@ -374,7 +405,7 @@ function dlBox(o,p){
 }
 function starRows(kind){return CR[kind].map((c,i)=>`<div class="sr"><span>${esc(c[0])}</span><div role="radiogroup" aria-label="${esc(c[0])}">${[1,2,3,4,5].map(v=>`<button type="button" class="star ${RF.s[i]>=v?"on":""}" role="radio" aria-checked="${RF.s[i]===v}" aria-label="${v} yulduz" data-i="${i}" data-v="${v}">★</button>`).join("")}</div></div>`).join("")}
 function rateForm(){
-  const o=S.orders[RF.o],p=o.parts[RF.p],kind=S.role==="business"?"toSup":"toBiz";
+  const o=findOrder(RF.o),p=findPart(o,RF.p),kind=S.role==="business"?"toSup":"toBiz";
   return `<div class="card"><h2>${o.id}: ${S.role==="business"?esc(sup(p.sup).name):esc(S.biz.name)} ni baholang</h2><p class="hint">Faqat yakunlangan buyurtmadan keyin, bir marta. Ikki tomon baholagach reytingga qo'shiladi.</p>${starRows(kind)}<textarea id="cm" maxlength="300" placeholder="Izoh (ixtiyoriy)" style="margin-top:8px">${esc(RF.c)}</textarea><p class="msg" role="alert">${esc(msg)}</p><div class="acts"><button class="btn p" data-act="rsubmit">Yuborish</button><button class="btn" data-act="rcancel">Bekor qilish</button></div></div>`;
 }
 function vMarket(){
@@ -396,14 +427,14 @@ function vBOrders(){
     const st=pstat(o),l=live(o),day=l.reduce((a,p)=>a+p.qty*p.price,0),u=unit(o),pct=Math.min(100,Math.floor(l.reduce((a,p)=>a+p.qty,0)/o.qty*100));
     return `<div class="card"><div class="hd"><div><h2 style="margin:0">${o.id}: ${nm(o.qty)} ${u}/kun ${esc(o.product.toLowerCase())}</h2><p class="hint">${o.days} kun, ${o.mode==="pickup"?"Biznes o'zi olib ketadi":"Supplier o'zi yetkazadi"}</p></div><span class="tag ${st[1]}">${st[0]}</span></div>
 ${meter(o)}<p class="hint">Qoplash: ${pct}%. Platforma komissiyasi: ${CONFIG.platformCommission}%. Kunlik summa: ${fmt(day)} so'm, to'lov davri: ${PAYL[o.pay||"WEEKLY"]}.</p>
-${o.parts.map((p,pi)=>`<div class="row"><div><b>Supplier ${p.sup}: ${esc(sup(p.sup).name)}</b><small>${nm(p.qty)} ${u} × ${fmt(p.price)} so'm = ${fmt(p.qty*p.price)} so'm/kun, ⭐ ${nm(eff("toSup",p.sup).v)}</small></div><div class="acts" style="margin:0">${tag(p.st)}${p.st==="ACTIVE"&&o.mode==="pickup"&&p.dl==="READY"?`<button class="btn p" data-act="pickup" data-o="${oi}" data-p="${pi}">Olib ketdim</button>`:""}${!canRate(p,"business")?`<button class="btn p" data-act="rate" data-o="${oi}" data-p="${pi}">Baholash</button>`:p.r.toSup?`<span class="tag n">Baholangan</span>`:""}</div>${p.st==="ACTIVE"?`<div style="flex-basis:100%">${dlBox(o,p)}</div>`:""}</div>`).join("")}
+${o.parts.map((p,pi)=>`<div class="row"><div><b>Supplier ${p.sup}: ${esc(sup(p.sup).name)}</b><small>${nm(p.qty)} ${u} × ${fmt(p.price)} so'm = ${fmt(p.qty*p.price)} so'm/kun, ⭐ ${nm(eff("toSup",p.sup).v)}</small></div><div class="acts" style="margin:0">${tag(p.st)}${p.st==="ACTIVE"&&o.mode==="pickup"&&p.dl==="READY"?`<button class="btn p" data-act="pickup" data-o="${o.id}" data-p="${p.sup}">Olib ketdim</button>`:""}${!canRate(p,"business")?`<button class="btn p" data-act="rate" data-o="${o.id}" data-p="${p.sup}">Baholash</button>`:p.r.toSup?`<span class="tag n">Baholangan</span>`:""}</div>${p.st==="ACTIVE"?`<div style="flex-basis:100%">${dlBox(o,p)}</div>`:""}</div>`).join("")}
 ${payRows(o)}<details><summary>Tarix (${o.log.length})</summary><ul class="lg">${o.log.map(x=>`<li>${esc(x)}</li>`).join("")}</ul></details>
-${st[0]!=="Bekor qilingan"&&st[0]!=="Yakunlandi"?`<div class="acts"><button class="btn d" data-act="cancelo" data-o="${oi}">Buyurtmani bekor qilish</button></div>`:""}</div>`}).join(""):`<div class="card"><p>Hali buyurtma yo'q. "Bozor" bo'limida talab yarating.</p></div>`);
+${st[0]!=="Bekor qilingan"&&st[0]!=="Yakunlandi"?`<div class="acts"><button class="btn d" data-act="cancelo" data-o="${o.id}">Buyurtmani bekor qilish</button></div>`:""}</div>`}).join(""):`<div class="card"><p>Hali buyurtma yo'q. "Bozor" bo'limida talab yarating.</p></div>`);
 }
 function vSOrders(){
   const rows=[];S.orders.forEach((o,oi)=>o.parts.forEach((p,pi)=>{if(p.sup===S.sup)rows.push([o,oi,p,pi])}));
   return rows.length?rows.map(([o,oi,p,pi])=>{
-    const g=p.qty*p.price,c=Math.round(g*CONFIG.platformCommission/100),u=unit(o),b=(a,t,cl="p")=>`<button class="btn ${cl}" data-act="${a}" data-o="${oi}" data-p="${pi}">${t}</button>`;
+    const g=p.qty*p.price,c=Math.round(g*CONFIG.platformCommission/100),u=unit(o),b=(a,t,cl="p")=>`<button class="btn ${cl}" data-act="${a}" data-o="${o.id}" data-p="${p.sup}">${t}</button>`;
     let a="";
     if(p.st==="SENT")a=b("accept","Qabul qilish")+b("reject","Rad etish","d");
     else if(p.st==="ACTIVE"){
@@ -426,8 +457,7 @@ function vProfile(){
   return `<div class="card"><h2>${b?esc(S.biz.name):"Supplier "+s.id+": "+esc(s.name)}</h2>
 <p class="big">⭐ ${nm(e.v)}</p><p class="hint">${e.n} ta baho. ${b?"Supplierlar bergan":"Bizneslar bergan"} baholar asosida backend hisoblaydi.</p>
 <div class="grid" style="margin-top:12px"><label>Hudud<select data-prof="area">${opts}</select></label>
-${b?`<label>Manzil<input data-prof="addr" value="${esc(S.biz.addr)}"></label>`:`<label>Yetkazib berish radiusi<select data-prof="radius">${[1,2,3,5,8].map(k=>`<option${k===s.radius?" selected":""}>${k}</option>`).join("")}</select></label>`}</div></div>
-<div class="card"><p class="acts" style="margin:0"><button class="btn" data-act="reset">Namuna ma'lumotlarni tiklash</button></p></div>`;
+${b?`<label>Manzil<input data-prof="addr" value="${esc(S.biz.addr)}"></label>`:`<label>Yetkazib berish radiusi<select data-prof="radius">${[1,2,3,5,8].map(k=>`<option${k===s.radius?" selected":""}>${k}</option>`).join("")}</select></label>`}</div></div>`;
 }
 function render(){
   sync();const R=S.role,cu0=Auth.current(),nun=cu0?Notify.unread(cu0):0,nl="Bildirishnoma"+(nun?" ("+nun+")":""),tabs=R==="business"?[["market","Bozor"],["orders","Buyurtmalar"],["pay","To'lovlar"],["contracts","Shartnomalar"],["disp","Nizolar"],["notif",nl],["profile","Profil"]]:[["prod","Mahsulotlar"],["orders","Buyurtmalar"],["pay","To'lovlar"],["contracts","Shartnomalar"],["disp","Nizolar"],["notif",nl],["profile","Profil"]];
@@ -438,6 +468,8 @@ function render(){
   $("app").innerHTML=banner()+(RF?rateForm():"")+(PF?payForm():"")+(t==="market"?vMarket():t==="prod"?vProd():t==="orders"?(R==="business"?vBOrders():vSOrders()):t==="pay"?(R==="business"?vBPay():vSPay()):t==="contracts"?(R==="business"?vContracts():vSContracts()):t==="disp"?vDisp():t==="notif"?vNotif():vProfile());
   $("foot").textContent="Platforma komissiyasi: "+CONFIG.platformCommission+"%";
 }
+const findOrder=k=>S.orders.find(x=>x.id===k)||(/^\d+$/.test(String(k))?S.orders[Number(k)]:undefined);
+const findPart=(o,k)=>o?(o.parts.find(x=>x.sup===k)||(/^\d+$/.test(String(k))?o.parts[Number(k)]:undefined)):undefined;
 const NXT={prep:"PREPARING",ready:"READY",go:"IN_TRANSIT"};
 function advance(o,p){
   PaymentService.onDelivered(S,o,p,p.day+1);p.day++;
@@ -447,15 +479,15 @@ $("app").addEventListener("click",e=>{
   const sb=e.target.closest(".star");
   if(sb){RF.s[Number(sb.dataset.i)]=Number(sb.dataset.v);RF.c=($("cm")||{value:""}).value;render();return}
   const b=e.target.closest("[data-act]");if(!b)return;run(b.dataset.act,b.dataset)});
-const ACT_PERM={create:"orders.create",cancelo:"orders.create",pickup:"orders.create",accept:"orders.accept",reject:"orders.reject",prep:"delivery.update",ready:"delivery.update",go:"delivery.update",done:"delivery.update",pause:"delivery.update",resume:"delivery.update",finish:"delivery.update",pfm:"payments.submit",pfsub:"payments.submit",pconf:"payments.confirm",pdisp:"disputes.create",dopen:"disputes.create",dsub:"disputes.create",csend:"contracts.create",cdraft:"contracts.create",cdsend:"contracts.create",cddel:"contracts.create",rate:"orders.view",rsubmit:"orders.view",reset:"profile.manage"};
+const ACT_PERM={create:"orders.create",cancelo:"orders.create",pickup:"orders.create",accept:"orders.accept",reject:"orders.reject",prep:"delivery.update",ready:"delivery.update",go:"delivery.update",done:"delivery.update",pause:"delivery.update",resume:"delivery.update",finish:"delivery.update",pfm:"payments.submit",pfsub:"payments.submit",pconf:"payments.confirm",pdisp:"disputes.create",dopen:"disputes.create",dsub:"disputes.create",csend:"contracts.create",cdraft:"contracts.create",cdsend:"contracts.create",cddel:"contracts.create",rate:"orders.view",rsubmit:"orders.view"};
 const MODIFY=["accept","reject","prep","ready","go","done","pickup","pause","resume","finish","cancelo"];
 function run(a,ds){ // barcha harakatlar shu yerdan o'tadi: permission → validatsiya → holat o'zgarishi. Backendda shu qatlam API endpoint bo'ladi
-  const o=S.orders[ds.o],p=o&&o.parts[ds.p],R=S.role,before=p?p.st+"|"+p.dl:"";msg="";BN="";
+  const o=findOrder(ds.o),p=findPart(o,ds.p),R=S.role,before=p?p.st+"|"+p.dl:"";msg="";BN="";
   try{
   const cu=Auth.current();if(ACT_PERM[a]&&(!cu||cu.role!==R))throw Error("Sessiya roli mos emas.");
   if(ACT_PERM[a])Auth.require(ACT_PERM[a]);
   if(MODIFY.includes(a)){
-    if(R==="business"&&o&&o.businessId!==S.biz.id)throw Error("Bu buyurtma sizniki emas.");
+    if(R==="business"&&o&&o.businessId!==cu.businessId)throw Error("Bu buyurtma sizniki emas.");
     if(o&&(a==="cancelo"?o.parts.every(x=>x.st==="COMPLETED"||x.st==="CANCELLED"):p&&(p.st==="COMPLETED"||p.st==="CANCELLED")))throw Error("Yakunlangan yoki bekor qilingan buyurtmani o'zgartirib bo'lmaydi.");
     if(a==="accept"&&p&&!sup(p.sup).products.some(x=>x.name===o.product))throw Error("Supplier bu mahsulotni sotmaydi.")}
   
@@ -477,7 +509,7 @@ function run(a,ds){ // barcha harakatlar shu yerdan o'tadi: permission → valid
       S.orders[0].parts.forEach(pp=>{PaymentService.contract(S,S.orders[0],pp,today(),"PENDING");Notify.send(Notify.sup(pp.sup),"order.new","Yangi buyurtma",S.orders[0].id+": "+nm(pp.qty)+" "+unit(S.orders[0])+"/kun")});log(S.orders[0],"Biznes","Buyurtma yaratildi va "+used.length+" ta supplierga yuborildi");S.tab.business="orders"}
   }else if(a==="cancelo"&&R==="business"){o.parts.forEach(x=>{if(x.st!=="COMPLETED")x.st="CANCELLED"});log(o,"Biznes","Buyurtmani bekor qildi")}
   else if(a==="pickup"&&R==="business"&&p.dl==="READY"&&o.mode==="pickup"){p.dl="DELIVERED";log(o,"Biznes","Supplier "+p.sup+": olib ketdi");advance(o,p)}
-  else if(R==="supplier"&&p&&p.sup===S.sup){
+  else if(R==="supplier"&&p&&p.sup===cu.supplierId){
     if(a==="accept"&&p.st==="SENT"){p.st="ACTIVE";log(o,"Supplier "+p.sup,"Qismni qabul qildi")}
     else if(a==="reject"&&p.st==="SENT"){p.st="CANCELLED";log(o,"Supplier "+p.sup,"Qismni rad etdi")}
     else if(NXT[a]&&p.st==="ACTIVE"){p.dl=NXT[a];log(o,"Supplier "+p.sup,DST[p.dl])}
@@ -486,14 +518,14 @@ function run(a,ds){ // barcha harakatlar shu yerdan o'tadi: permission → valid
     else if(a==="resume"&&p.st==="PAUSED"){p.st="ACTIVE";log(o,"Supplier "+p.sup,"Davom ettirdi")}
     else if(a==="finish"&&p.st==="ACTIVE"){p.day=o.days;p.st="COMPLETED";log(o,"Tizim","Muddat yakunlandi (simulyatsiya)")}
   }
-  if(a==="rate"&&p&&!canRate(p,R)){RF={o:Number(ds.o),p:Number(ds.p),s:[],c:""}}
+  if(a==="rate"&&p&&!canRate(p,R)){RF={o:o.id,p:p.sup,s:[],c:""}}
   else if(a==="rcancel")RF=null;
   else if(a==="rsubmit"){
-    const oo=S.orders[RF.o],pp=oo.parts[RF.p],kind=R==="business"?"toSup":"toBiz";RF.c=$("cm").value;
-    if(canRate(pp,R)||(R==="supplier"&&pp.sup!==S.sup))msg="Bu buyurtmani hozir baholab bo'lmaydi.";
+    const oo=findOrder(RF.o),pp=findPart(oo,RF.p),kind=R==="business"?"toSup":"toBiz";RF.c=$("cm").value;if(!pp)throw Error("Buyurtma topilmadi.");
+    if(canRate(pp,R)||(R==="supplier"&&pp.sup!==cu.supplierId)||(R==="business"&&oo.businessId!==cu.businessId))msg="Bu buyurtmani hozir baholab bo'lmaydi.";
     else if(RF.s.length<CR[kind].length||RF.s.some(v=>!v))msg="Barcha mezonlarni 1 dan 5 gacha baholang.";
     else{pp.r[kind]={s:RF.s.slice(),c:RF.c.trim().slice(0,300)};log(oo,R==="business"?"Biznes":"Supplier "+pp.sup,"Baho berdi");RF=null}
-  }else if(a==="reset"){S=seed();RF=null;audit("Tizim","system","demo.reset","system","-","Demo ma'lumotlar tiklandi")}
+  }else if(a==="reset")throw Error("Demo ma'lumotni faqat admin tiklay oladi (Admin → Sozlamalar).")
   if(p&&R==="supplier"){const nb=Notify.biz(o.businessId),t=o.id+" / Supplier "+p.sup;
     if(a==="accept"&&p.st==="ACTIVE")Notify.send(nb,"order.accepted","Buyurtma qabul qilindi",t);
     else if(a==="reject"&&p.st==="CANCELLED")Notify.send(nb,"order.rejected","Buyurtma rad etildi",t);
@@ -530,6 +562,7 @@ const RL={business:"Business",supplier:"Supplier",admin:"Admin",system:"Tizim"};
 const aBars=it=>{const m=Math.max(1,...it.map(x=>x[1]));return it.map(x=>`<div class="br"><span>${esc(x[0])}</span><div><i style="width:${x[1]/m*100}%"></i></div><span>${x[2]}</span></div>`).join("")||"<p class='hint'>Ma'lumot yo'q</p>"};
 const aLine=a=>`${dt(a.ts)} — ${RL[a.role]||a.role} — ${esc(a.oid)}: ${esc(a.desc)}`;
 const aVal=x=>x.p.qty*x.p.price*x.o.days;
+let RA=false;
 const V={
 dash(){
   const l=aParts(),act=S.orders.filter(o=>pstat(o)[0]==="Faol").length,pend=S.orders.filter(o=>pstat(o)[0].indexOf("Supplierlar")===0).length;
@@ -599,6 +632,8 @@ audit_log       -> S.audit[]
 disputes        -> S.disputes[]
 config          -> CONFIG</pre></div>`;
 }};
+const resetCard=()=>`<div class="card"><h2>Demo ma'lumotlar</h2><p class="hint">Barcha foydalanuvchilar ma'lumotini namunaviy holatga qaytaradi. Bu amalni qaytarib bo'lmaydi.</p><div class="acts">${RA?'<button class="btn d" data-a="dresetyes">Ha, hammasini o\'chirish</button><button class="btn" data-a="dresetno">Bekor qilish</button>':'<button class="btn d" data-a="dreset">Namuna ma\'lumotlarni tiklash</button>'}</div></div>`;
+const _setView=V.set;V.set=()=>_setView()+(Auth.can("settings.manage")?resetCard():"");
 const ANAV=[["dash","Dashboard"],["orders","Buyurtmalar"],["pay","To'lovlar"],["agr","Shartnomalar"],["biz","Bizneslar"],["sup","Supplierlar"],["users","Foydalanuvchilar"],["disp","Nizolar"],["notif","Bildirishnomalar"],["stat","Statistika"],["audit","Audit log"],["set","Sozlamalar"]];
 const VIEW_PERM={dash:"dashboard.view",orders:"orders.view",pay:"payments.view",agr:"contracts.view",biz:"businesses.view",sup:"suppliers.view",disp:"disputes.manage",stat:"dashboard.view",audit:"audit.view",set:"settings.manage",users:"users.manage",notif:"dashboard.view"};
 const UT={ACTIVE:["Faol",""],BLOCKED:["Bloklangan","x"],PENDING:["Kutilmoqda","w"]};
@@ -613,7 +648,10 @@ function adminAct(a,d){
   else if(a==="dstat")DisputeService.setStatus(d.id,d.st,($("dres")||{}).value);
   else if(a==="ublock"||a==="uact"){Auth.require("users.manage");AC={id:d.id,st:a==="ublock"?"BLOCKED":"ACTIVE"}}
   else if(a==="uyes"){const c=AC;AC=null;if(c)AdminService.setUser(c.id,c.st,true)}
-  else if(a==="uno")AC=null}
+  else if(a==="uno")AC=null
+  else if(a==="dreset"){Auth.require("settings.manage");RA=true}
+  else if(a==="dresetno")RA=false
+  else if(a==="dresetyes"){const u=Auth.require("settings.manage"),keep=S.sessions;RA=false;S=seed();S.sessions=keep||[];auditU(u,"demo.reset","system","-","Demo ma'lumotlar admin tomonidan tiklandi")}}
 function admRender(){
   sync();const el=$("adm");
   if(!isAdm()){el.innerHTML=`<div class="card" style="max-width:380px;margin:40px auto"><h1>Admin kirish</h1><p class="hint">Demo rejim. Faqat vakolatli foydalanuvchilar uchun.</p><label style="margin-top:12px">Login<input id="au" autocomplete="off"></label><label style="margin-top:10px">Parol<input id="ap" type="password" autocomplete="off"></label><p class="msg" role="alert">${esc(AMSG)}</p><div class="acts"><button class="btn p" data-a="login">Kirish</button></div></div>`;return}
@@ -622,22 +660,32 @@ function admRender(){
   el.innerHTML=`<div class="aw"><div class="ab"><div><h1>SutBozor Admin</h1><p class="hint">${esc(cu.name)} · Platforma komissiyasi: ${CONFIG.platformCommission}%</p></div><button class="btn" data-a="logout">Chiqish</button></div><div class="al"><nav class="an" aria-label="Admin bo'limlari">${nav.map(n=>`<button data-v="${n[0]}" ${AV===n[0]?'aria-current="page"':""}>${n[1]}</button>`).join("")}</nav><div>${AERR?`<div class="card"><p class="msg" role="alert">${esc(AERR)}</p></div>`:""}${AC?confirmCard():""}${nav.length?V[AV]():"<div class='card'>Ruxsat yo'q.</div>"}</div></div></div>`;
 }
 function admLogin(){
-  const u=$("au").value.trim(),pw=$("ap").value;
-  if(u===ADMIN_DEMO.username&&pw===ADMIN_DEMO.password){const au=S.users.find(x=>x.id==="U-1");if(au.status!=="ACTIVE")AMSG="Hisob bloklangan";else{try{sessionStorage.setItem("sb-admin",au.id)}catch(e){}AMSG="";au.lastLoginAt=new Date().toISOString();audit(au.name,"admin","admin.login","session","-","Admin tizimga kirdi")}}
-  else{AMSG="Login yoki parol noto'g'ri";audit(u||"noma'lum","admin","admin.login_failed","session","-","Muvaffaqiyatsiz kirish urinishi")}
+  const u=$("au").value.trim(),pw=$("ap").value,now=Date.now();S.lock=S.lock||{n:0,until:0};
+  if(S.lock.until>now){AMSG="Juda ko'p urinish. "+Math.ceil((S.lock.until-now)/1000)+" soniyadan keyin urinib ko'ring.";audit("noma'lum","admin","admin.login_locked","session","-","Bloklangan vaqtda kirish urinishi");save();admRender();return}
+  if(u===ADMIN_DEMO.username&&sha256(pw)===ADMIN_DEMO.passHash){
+    const au=S.users.find(x=>x.id==="U-1");
+    if(au.status!=="ACTIVE")AMSG="Hisob bloklangan";
+    else{const t=rndHex();S.sessions=(S.sessions||[]).filter(x=>x.exp>now);S.sessions.push({t,uid:au.id,exp:now+CONFIG.adminSessionMin*60000});try{sessionStorage.setItem("sb-admin",t)}catch(e){}S.lock={n:0,until:0};AMSG="";au.lastLoginAt=new Date().toISOString();audit(au.name,"admin","admin.login","session","-","Admin tizimga kirdi")}
+  }else{S.lock.n++;if(S.lock.n>=5){S.lock.until=now+60000;S.lock.n=0}AMSG="Login yoki parol noto'g'ri";audit(u||"noma'lum","admin","admin.login_failed","session","-","Muvaffaqiyatsiz kirish urinishi")}
   save();admRender();
 }
 $("adm").addEventListener("click",e=>{
   const v=e.target.closest("[data-v]");if(v){AV=v.dataset.v;admRender();return}
   const b=e.target.closest("[data-a]");if(!b)return;
   if(b.dataset.a==="login")admLogin();
-  else if(b.dataset.a==="logout"){AC=null;AERR="";audit("admin","admin","admin.logout","session","-","Admin chiqdi");try{sessionStorage.removeItem("sb-admin")}catch(x){}save();location.hash=""}
+  else if(b.dataset.a==="logout"){AC=null;AERR="";audit("admin","admin","admin.logout","session","-","Admin chiqdi");{let t=null;try{t=sessionStorage.getItem("sb-admin");sessionStorage.removeItem("sb-admin")}catch(x){}S.sessions=(S.sessions||[]).filter(x=>x.t!==t)}save();location.hash=""}
   else{try{AERR="";adminAct(b.dataset.a,b.dataset)}catch(x){AERR=x.message}save();admRender()}
 });
 $("adm").addEventListener("change",e=>{if(e.target.id==="af"){AF=e.target.value;admRender()}else if(e.target.id==="apf"){APF=e.target.value;admRender()}});
 $("adm").addEventListener("keydown",e=>{if(e.key==="Enter"&&(e.target.id==="au"||e.target.id==="ap"))admLogin()});
 function route(){const ad=location.hash==="#admin";Auth.ctx=ad?"admin":"app";document.querySelector("main").hidden=ad;$("adm").hidden=!ad;document.title=ad?"SutBozor Admin":"SutBozor";if(ad)admRender();else render()}
 addEventListener("hashchange",route);
+// Server bilan ulanish: faqat env.js da useBackend=true bo'lganda. Demo (localStorage) ishlashiga ta'sir qilmaydi.
+// Token faqat xotirada. Rol serverdan keladi, bu yerda faqat holat ko'rsatiladi (haqiqiy ruxsat serverda tekshiriladi).
+(function(){try{const el=$("srv"),api=window.SutBozorApi&&window.SutBozorApi.get();if(!el||!api||!api.config.useBackend||!api.config.isConfigured)return;
+const tg=window.Telegram&&window.Telegram.WebApp;try{if(tg&&tg.ready)tg.ready()}catch(x){}
+el.textContent="Server bilan ulanmoqda…";
+api.auth.loginWithTelegram().then(u=>{el.textContent="Server: ulandi ("+u.role+")"}).catch(e=>{el.textContent="Server: "+(e&&e.code?e.code:"xato")+(e&&e.message?" - "+e.message:"")})}catch(x){}})();
 route();
 </script>
 </body>
