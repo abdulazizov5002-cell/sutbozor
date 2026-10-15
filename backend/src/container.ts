@@ -4,6 +4,7 @@ import { createAuthController } from "./controllers/auth.controller";
 import { disputeController } from "./controllers/dispute.controller";
 import { entityController } from "./controllers/entity.controller";
 import { orderController } from "./controllers/order.controller";
+import { notificationController } from "./controllers/notification.controller";
 import { paymentController } from "./controllers/payment.controller";
 import { userController } from "./controllers/user.controller";
 import { productController } from "./controllers/product.controller";
@@ -37,7 +38,7 @@ export function buildContainer(repositories: Repositories = notImplementedReposi
     contracts: entityController(services.contracts),
     payments: paymentController(services.payments),
     disputes: disputeController(services.disputes),
-    notifications: entityController(services.notifications),
+    notifications: notificationController(services.notifications),
     auditLogs: entityController(services.audit),
     auth: createAuthController({
       telegramVerifier: options.telegramVerifier ?? createUnimplementedTelegramVerifier(),
