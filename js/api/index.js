@@ -2,7 +2,7 @@
  * SutBozorApi: xizmatlarni yig'ish. Foydalanish:
  *   var api = SutBozorApi.get();                 // bitta umumiy nusxa (SutBozorConfig bilan)
  *   if (api.config.useBackend) { api.products.list({ page: 1, limit: 20 }).then(...).catch(showError); }
- * Yuklash tartibi (index.html): env.js, config.js, apiClient.js, authService.js, productService.js, supplierService.js, orderService.js, paymentService.js, index.js
+ * Yuklash tartibi (index.html): env.js, config.js, apiClient.js, authService.js, productService.js, supplierService.js, orderService.js, contractService.js, paymentService.js, index.js
  */
 (function (global) {
   "use strict";
@@ -22,6 +22,7 @@
       products: NS.createProductService(client),
       suppliers: NS.createSupplierService(client),
       orders: NS.createOrderService(client),
+      contracts: NS.createContractService(client),
       payments: NS.createPaymentService(client),
       /** Hech qachon xato tashlamaydi: { ok, apiBaseUrl, service?, error? }. Dasturchi konsolida: SutBozorApi.get().checkConnection() */
       checkConnection: function () {

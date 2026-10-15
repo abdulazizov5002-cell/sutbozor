@@ -28,7 +28,10 @@
           return client.post("/api/orders", { body: o });
         });
       },
-      /** action: "accept" | "reject" | "cancel"; reject va cancel uchun reason (kamida 3 belgi) majburiy. */
+      /**
+       * action: accept | reject | cancel | prepare | ready | depart | deliver | pickup | pause | resume.
+       * reject, cancel va pause uchun reason (kamida 3 belgi) majburiy. Holat qoidalari serverda (noto'g'ri holat -> 409).
+       */
       act: function (orderId, itemId, action, reason) {
         var body = { action: action };
         if (reason) body.reason = reason;
