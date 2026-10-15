@@ -79,8 +79,8 @@ pre.sc{background:var(--bg);border:1px solid var(--line);border-radius:10px;padd
 <div id="spay"></div>
 <div id="sdis"></div>
 </main>
-<div id="adm" hidden></div>
 <div id="adis" hidden></div>
+<div id="adm" hidden></div>
 <!-- Telegram Mini App kutubxonasi (initData beradi). Telegramdan tashqarida ham sahifa avvalgidek ishlaydi. -->
 <script src="https://telegram.org/js/telegram-web-app.js"></script>
 <!-- Backend integratsiya qatlami (env.js da useBackend=false bo'lsa ishlatilmaydi). Fayllar topilmasa sahifa avvalgidek ishlaydi. -->
@@ -866,7 +866,8 @@ function srvDisputes(api,role,box){
     else if(a==="go")go(AX.id,AX.status,AX.text)});
   load()}
 /* Serverga kirgan foydalanuvchi: holat qatori + (supplier bo'lsa) mahsulotlar bo'limi. */
-function srvUser(api,el,u){el.textContent="Server: ulandi ("+u.role+")";if(u.role==="supplier"&&!$("sprod").dataset.on){$("sprod").dataset.on="1";supProducts(api)}
+function srvUser(api,el,u){el.textContent="Server: ulandi ("+u.role+")";if(u.role==="admin"&&!$("sord").dataset.on){$("sord").dataset.on="1";$("sord").innerHTML=`<div class="card"><h2>Admin</h2><p class="hint">Siz serverda ADMIN sifatida kirdingiz. Boshqaruv panelida serverdagi nizolar (hal qilish) birinchi bo'lib turadi; qolgan bo'limlar hozircha demo (brauzer xotirasi).</p><div class="acts"><a class="btn p" href="#admin">Admin panelni ochish</a></div></div>`}
+  if(u.role==="supplier"&&!$("sprod").dataset.on){$("sprod").dataset.on="1";supProducts(api)}
   if((u.role==="supplier"||u.role==="business")&&!$("sord").dataset.on){$("sord").dataset.on="1";srvOrders(api,u.role)}
   if((u.role==="supplier"||u.role==="business")&&!$("spay").dataset.on){$("spay").dataset.on="1";srvPayments(api,u.role)}
   if((u.role==="supplier"||u.role==="business")&&!$("sdis").dataset.on){$("sdis").dataset.on="1";srvDisputes(api,u.role,$("sdis"))}}
