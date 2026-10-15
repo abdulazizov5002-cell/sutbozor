@@ -1,0 +1,44 @@
+name: Muddati o'tgan to'lovlarni belgilash
+
+# Har soat serverdagi POST /api/internal/overdue-sweep ni chaqiradi (backend/docs/CRON.md).
+# Sir (CRON_SECRET) faqat GitHub Secrets'da turadi, kodda yo'q. Qo'lda ham ishga tushirsa bo'ladi (Actions -> Run workflow).
+on:
+  schedule:
+    - cron: "7 * * * *"
+  workflow_dispatch:
+
+permissions: {}
+
+concurrency:
+  group: overdue-sweep
+  cancel-in-progress: false
+
+jobs:
+  sweep:
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - name: Serverni chaqirish
+        env:
+          CRON_SECRET: ${{ secrets.CRON_SECRET }}
+          API_URL: https://mizatus.onrender.com
+        run: |
+          if [ -z "$CRON_SECRET" ]; then
+            echo "::error::GitHub Secrets'da CRON_SECRET yo'q. Settings -> Secrets and variables -> Actions -> New repository secret."
+            exit 1
+          fi
+          # Render bepul tarifda uxlab qolishi mumkin: birinchi so'rov uyg'otadi (~1 daqiqa), shuning uchun uzoq kutish va qayta urinish.
+          body=$(mktemp)
+          code=$(curl -sS -o "$body" -w '%{http_code}' -X POST \
+            -H "x-cron-secret: $CRON_SECRET" \
+            --max-time 120 --retry 3 --retry-delay 20 --retry-all-errors \
+            "$API_URL/api/internal/overdue-sweep") || code=000
+          echo "HTTP $code"
+          cat "$body"; echo
+          case "$code" in
+            200) exit 0 ;;
+            401) echo "::error::401: GitHub'dagi va Render'dagi CRON_SECRET bir xil emas." ;;
+            501) echo "::error::501: Render'da CRON_SECRET yo'q yoki baza ulanmagan." ;;
+            *)   echo "::error::Kutilmagan javob ($code)." ;;
+          esac
+          exit 1
