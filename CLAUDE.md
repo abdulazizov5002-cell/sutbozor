@@ -98,6 +98,7 @@ PostgreSQL (Neon)
   `platformCommission = 0 AND grossAmount = amount`, manfiy qiymat taqiqi, `users_role_link`, audit_logs faqat qo'shiladi).
   Pul ustunlari `BigInt`; `BigInt <-> number` aylantirish **faqat** `src/repositories/prisma/mappers.ts` da (2^53-1 dan katta qiymat xato).
 - Birinchi admin qo'lda SQL bilan yaratiladi: `backend/docs/ADMIN_BOOTSTRAP.md`.
+- Zaxira nusxa va tiklash (Neon oynasi, snapshot branch, tiklash mashqi): `backend/docs/BACKUP.md`.
 
 ### Sirlar va muhit
 - Render env'da: `DATABASE_URL`, `JWT_SECRET` (>= 32 belgi), `TELEGRAM_BOT_TOKEN`, `TELEGRAM_NOTIFICATIONS` (ixtiyoriy, `true` bilan yoqiladi), `CRON_SECRET` (ixtiyoriy, cron uchun; GitHub Secrets'da ham bir xil qiymat), `CORS_ORIGIN`, `NODE_ENV=production`, `TRUST_PROXY` va boshqalar (`backend/.env.example` ro'yxati).
