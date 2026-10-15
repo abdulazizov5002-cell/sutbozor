@@ -2,6 +2,7 @@ import type { RegistrationStore, TelegramAccountStore, TelegramVerifier, TokenSe
 import { createUnimplementedTelegramVerifier } from "./auth/telegram/verifier";
 import { createAuthController } from "./controllers/auth.controller";
 import { entityController } from "./controllers/entity.controller";
+import { orderController } from "./controllers/order.controller";
 import { productController } from "./controllers/product.controller";
 import { notImplementedRepositories } from "./repositories/notImplemented";
 import type { Repositories } from "./repositories/ports";
@@ -29,7 +30,7 @@ export function buildContainer(repositories: Repositories = notImplementedReposi
     businesses: entityController(services.businesses),
     suppliers: entityController(services.suppliers),
     products: productController(services.products),
-    orders: entityController(services.orders),
+    orders: orderController(services.orders),
     contracts: entityController(services.contracts),
     payments: entityController(services.payments),
     disputes: entityController(services.disputes),

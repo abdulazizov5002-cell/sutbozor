@@ -1,3 +1,4 @@
+import type { NotificationType } from "../config/constants";
 import type {
   AuditLog, Business, Contract, Dispute, ISODate, NewAuditLog, Notification, Order, Payment, Product, Supplier, User,
 } from "../domain/entities";
@@ -56,7 +57,63 @@ export interface ProductRepository extends ReadRepository<Product> {
   update(id: string, patch: ProductPatch, audit: (updated: Product) => NewAuditLog): Promise<Product | null>;
   remove(id: string, audit: (removed: Product) => NewAuditLog): Promise<Product | null>;
 }
-export type OrderRepository = ReadRepository<Order>; // Order items bilan birga (aggregate)
+/** Supplierning shu mahsulot bo'yicha hozirgi taklifi (faqat faol foydalanuvchisi bor supplierlar uchun). */
+export interface Offering {
+  supplierId: string;
+  pricePerUnit: Product["pricePerUnit"];
+  dailyCapacity: number;
+}
+export interface NewOrderItem {
+  supplierId: string;
+  quantityPerDay: number;
+  /** Narx snapshot: buyurtma paytidagi supplier narxi (keyin o'zgarsa buyurtma o'zgarmaydi). */
+  pricePerUnit: Product["pricePerUnit"];
+}
+export interface NewOrder {
+  businessId: string;
+  product: string;
+  /** Qismlar yig'indisi. */
+  quantityPerDay: number;
+  days: number;
+  deliveryMode: Order["deliveryMode"];
+  paymentSchedule: Order["paymentSchedule"];
+  prepTime: string;
+  items: NewOrderItem[];
+}
+export interface NewNotification {
+  type: NotificationType;
+  title: string;
+  message: string;
+}
+/** Bildirishnoma oluvchilar: shu biznesning yoki shu supplierning FAOL foydalanuvchilari. */
+export interface Recipient {
+  businessId?: string;
+  supplierId?: string;
+}
+export interface OrderItemTransition {
+  orderId: string;
+  itemId: string;
+  /** Faqat SENT holatidagi qism o'tadi (poyga holatida ikkinchi so'rov null oladi). */
+  to: "ACTIVE" | "CANCELLED";
+  /** Qo'shimcha himoya: qism shu supplierga / buyurtma shu bizneska tegishli bo'lishi shart. */
+  supplierId?: string;
+  businessId?: string;
+}
+
+/**
+ * Buyurtma (items bilan aggregate): o'qish + yozish.
+ * Har yozish audit yozuvi va bildirishnoma bilan BITTA tranzaksiyada.
+ */
+export interface OrderRepository extends ReadRepository<Order> {
+  findOfferings(supplierIds: string[], product: string): Promise<Offering[]>;
+  /** Buyurtma + qismlar (status SENT) + `SB-<n>` raqami; har qism supplierining foydalanuvchilariga `notify`. */
+  create(input: NewOrder, hooks: { audit: (created: Order) => NewAuditLog; notify: (created: Order) => NewNotification }): Promise<Order>;
+  /** SENT -> ACTIVE/CANCELLED. Qism SENT emas yoki egalik mos kelmasa null. */
+  transitionItem(
+    input: OrderItemTransition,
+    hooks: { audit: (updated: Order) => NewAuditLog; recipient: Recipient; notify: (updated: Order) => NewNotification },
+  ): Promise<Order | null>;
+}
 export type ContractRepository = ReadRepository<Contract>;
 export type DisputeRepository = ReadRepository<Dispute>;
 
