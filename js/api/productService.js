@@ -1,8 +1,7 @@
 /**
  * productService: Mahsulotlar (supplier mahsuloti, bozor).
- * Hozir backendda mavjud: GET /api/products va GET /api/products/:id (ruxsat va egalik serverda tekshiriladi:
- * biznes faqat o'zinikini, supplier faqat o'z qismini ko'radi). Yozish amallari keyingi bosqichda qo'shiladi
- * va shu xizmatga metod sifatida ulanadi (frontend chaqiruvlari o'zgarmaydi).
+ * Backendda mavjud: GET /api/products, GET /api/products/:id (biznes bozorni, supplier o'zinikini ko'radi) va faqat supplier uchun
+ * POST /api/products, PATCH /api/products/:id, DELETE /api/products/:id (faqat o'z mahsuloti; huquq va egalik serverda tekshiriladi).
  */
 (function (global) {
   "use strict";
@@ -20,6 +19,23 @@
       getById: function (id) {
         return h.attempt(function () {
           return client.get("/api/products/" + h.idPath(id));
+        });
+      },
+      /** p = { name, pricePerUnit, dailyCapacity, availableToday }. supplierId va birlik serverda aniqlanadi. */
+      create: function (p) {
+        return h.attempt(function () {
+          return client.post("/api/products", { body: p });
+        });
+      },
+      /** patch = { pricePerUnit?, dailyCapacity?, availableToday? } (kamida bittasi). */
+      update: function (id, patch) {
+        return h.attempt(function () {
+          return client.patch("/api/products/" + h.idPath(id), { body: patch });
+        });
+      },
+      remove: function (id) {
+        return h.attempt(function () {
+          return client.del("/api/products/" + h.idPath(id));
         });
       },
     };
