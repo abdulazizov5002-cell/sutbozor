@@ -229,15 +229,19 @@ function orderWrites(prisma: PrismaClient): Pick<OrderRepository, "findOfferings
           const item = before?.items.find((i) => i.id === input.itemId);
           if (!before || !item) return null;
 
-          // Yetkazish hisobi: +1 kun; oxirgi kunda COMPLETED, aks holda keyingi kun uchun SCHEDULED.
-          const counted = input.delivery ? item.daysDelivered + 1 : null;
+          // Yetkazish hisobi: mark — faqat sana; confirm/both — +1 kun; oxirgi kunda COMPLETED, aks holda keyingi kun uchun SCHEDULED.
+          const stage = input.delivery?.stage;
+          const marks = stage === "mark" || stage === "both";
+          const counts = stage === "confirm" || stage === "both";
+          const counted = counts ? item.daysDelivered + 1 : null;
           const completes = counted !== null && counted >= before.days;
           const data = {
             ...(input.to.status ? { status: input.to.status } : {}),
             ...(input.to.deliveryStatus ? { deliveryStatus: input.to.deliveryStatus } : {}),
+            ...(marks ? { lastDeliveredOn: new Date(`${input.delivery!.today}T00:00:00.000Z`) } : {}),
             ...(counted !== null
               ? {
-                  daysDelivered: counted, lastDeliveredOn: new Date(`${input.delivery!.today}T00:00:00.000Z`),
+                  daysDelivered: counted,
                   status: completes ? ("COMPLETED" as const) : item.status,
                   deliveryStatus: completes ? ("DELIVERED" as const) : ("SCHEDULED" as const),
                 }
@@ -249,8 +253,8 @@ function orderWrites(prisma: PrismaClient): Pick<OrderRepository, "findOfferings
               ...(input.from.deliveryStatus ? { deliveryStatus: input.from.deliveryStatus } : {}),
               ...(input.supplierId ? { supplierId: input.supplierId } : {}),
               ...(input.businessId ? { order: { businessId: input.businessId } } : {}),
-              ...(input.delivery
-                ? { OR: [{ lastDeliveredOn: null }, { lastDeliveredOn: { lt: new Date(`${input.delivery.today}T00:00:00.000Z`) } }] }
+              ...(marks
+                ? { OR: [{ lastDeliveredOn: null }, { lastDeliveredOn: { lt: new Date(`${input.delivery!.today}T00:00:00.000Z`) } }] }
                 : {}),
             },
             data,

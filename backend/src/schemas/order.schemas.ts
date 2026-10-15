@@ -29,10 +29,11 @@ export type CreateOrderBody = z.infer<typeof createOrderBody>;
 /**
  * Buyurtma qismi (bitta supplier) ustida harakat.
  * Supplier: accept (shartnoma yaratadi), reject, prepare -> ready -> depart -> deliver (kunlik yetkazish sikli), pause, resume.
- * Business: cancel (faqat SENT), pickup (olib ketish rejimida tayyor mahsulotni oldim).
+ * Business: cancel (faqat SENT), receive (yetkazilgan mahsulotni qabul qildim: kun shu paytda hisobga olinadi),
+ * pickup (olib ketish rejimida tayyor mahsulotni oldim). Xaridor 24 soatda tasdiqlamasa, keyingi harakatda avtomatik tasdiqlanadi.
  * Rad etish, bekor qilish va to'xtatish uchun sabab majburiy.
  */
-export const ORDER_ITEM_ACTIONS = ["accept", "reject", "cancel", "prepare", "ready", "depart", "deliver", "pickup", "pause", "resume"] as const;
+export const ORDER_ITEM_ACTIONS = ["accept", "reject", "cancel", "prepare", "ready", "depart", "deliver", "receive", "pickup", "pause", "resume"] as const;
 export type OrderItemAction = (typeof ORDER_ITEM_ACTIONS)[number];
 export const orderItemActionBody = strictObject({
   action: z.enum(ORDER_ITEM_ACTIONS),

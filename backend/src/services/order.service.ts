@@ -24,8 +24,8 @@ interface ActionSpec {
   to: { status?: OrderItemStatus; deliveryStatus?: DeliveryStatus };
   /** accept: shartnoma yaratadi. */
   contract?: boolean;
-  /** deliver/pickup: yetkazish kuniga +1 (bir kunda bir marta). */
-  counts?: boolean;
+  /** Yetkazish hisobi bosqichi (ports.ts: OrderItemTransition.delivery). */
+  stage?: "mark" | "confirm" | "both";
   verb: string;
   note?: { type: NotificationType; title: string; text: string };
 }
@@ -40,9 +40,11 @@ const ACTIONS: Record<OrderItemAction, ActionSpec> = {
   ready: { who: "supplier", perm: "delivery.update", status: "ACTIVE", delivery: "PREPARING", to: { deliveryStatus: "READY" }, verb: "tayyor",
     note: { type: "delivery.ready", title: "Mahsulot tayyor", text: "mahsulot tayyor." } },
   depart: { who: "supplier", perm: "delivery.update", status: "ACTIVE", delivery: "READY", mode: "supplier", to: { deliveryStatus: "IN_TRANSIT" }, verb: "yo'lga chiqdi" },
-  deliver: { who: "supplier", perm: "delivery.update", status: "ACTIVE", delivery: "IN_TRANSIT", mode: "supplier", to: {}, counts: true, verb: "yetkazildi",
-    note: { type: "delivery.done", title: "Mahsulot yetkazildi", text: "mahsulotni yetkazdi." } },
-  pickup: { who: "business", perm: "orders.create", status: "ACTIVE", delivery: "READY", mode: "pickup", to: {}, counts: true, verb: "olib ketildi",
+  deliver: { who: "supplier", perm: "delivery.update", status: "ACTIVE", delivery: "IN_TRANSIT", mode: "supplier", to: { deliveryStatus: "DELIVERED" }, stage: "mark", verb: "yetkazildi (xaridor tasdig'i kutilmoqda)",
+    note: { type: "delivery.done", title: "Mahsulot yetkazildi", text: "mahsulotni yetkazdi. Qabul qilganingizni tasdiqlang." } },
+  receive: { who: "business", perm: "orders.create", status: "ACTIVE", delivery: "DELIVERED", to: {}, stage: "confirm", verb: "qabul qilindi",
+    note: { type: "delivery.done", title: "Mahsulot qabul qilindi", text: "mahsulotni qabul qildi." } },
+  pickup: { who: "business", perm: "orders.create", status: "ACTIVE", delivery: "READY", mode: "pickup", to: {}, stage: "both", verb: "olib ketildi",
     note: { type: "delivery.done", title: "Mahsulot olib ketildi", text: "mahsulotni olib ketdi." } },
   pause: { who: "supplier", perm: "delivery.update", status: "ACTIVE", delivery: "SCHEDULED", to: { status: "PAUSED" }, verb: "to'xtatildi",
     note: { type: "order.paused", title: "Yetkazish to'xtatildi", text: "yetkazishni to'xtatdi." } },
@@ -114,17 +116,39 @@ export function createOrderService(repo: OrderRepository): OrderService {
       if (supplierSide ? !actor.supplierId : !actor.businessId) throw forbidden("Hisob biriktirilmagan.");
 
       // Egalik (404): begona yoki yo'q buyurtma/qism bir xil javob beradi.
-      const order = await repo.findById(orderId);
+      let order = await repo.findById(orderId);
       if (!order || !canAccessOrder(actor, order)) throw notFound();
-      const item = order.items.find((i) => i.id === itemId);
+      let item = order.items.find((i) => i.id === itemId);
       if (!item || (supplierSide && item.supplierId !== actor.supplierId)) throw notFound();
 
-      // Holat (409)
       const today = todayInBusinessZone();
+      // Avtomatik tasdiqlash: xaridor yetkazilgan kunni o'sha kuni tasdiqlamagan bo'lsa, keyingi harakat oldidan kun hisobga olinadi.
+      if (action !== "receive" && item.status === "ACTIVE" && item.deliveryStatus === "DELIVERED" && item.lastDeliveredOn && item.lastDeliveredOn < today) {
+        const auto = await repo.transitionItem(
+          {
+            orderId, itemId, from: { status: "ACTIVE", deliveryStatus: "DELIVERED" }, to: {}, delivery: { today, stage: "confirm" },
+            ...(supplierSide ? { supplierId: actor.supplierId! } : { businessId: actor.businessId! }),
+          },
+          {
+            audit: (o) => audit(actor, "order.auto_receive", o, `Buyurtma ${o.publicId} qismi: yetkazish ${item!.lastDeliveredOn} kuni avtomatik tasdiqlandi`),
+            recipient: {}, notify: () => null,
+          },
+        );
+        if (auto) {
+          order = auto;
+          item = order.items.find((i) => i.id === itemId) ?? item;
+        } else {
+          // Poyga: boshqa so'rov allaqachon tasdiqlagan bo'lishi mumkin; yangi holatni o'qiymiz.
+          order = (await repo.findById(orderId)) ?? order;
+          item = order.items.find((i) => i.id === itemId) ?? item;
+        }
+      }
+
+      // Holat (409)
       const stale = "Bu amal hozirgi holatda mumkin emas. Sahifani yangilang.";
       if (item.status !== spec.status || (spec.delivery && item.deliveryStatus !== spec.delivery)) throw conflict(stale);
       if (spec.mode && order.deliveryMode !== spec.mode) throw conflict("Bu amal buyurtmaning yetkazish turiga mos emas.");
-      if (spec.counts && item.lastDeliveredOn === today) throw conflict("Bugungi yetkazish allaqachon qayd etilgan.");
+      if ((spec.stage === "mark" || spec.stage === "both") && item.lastDeliveredOn === today) throw conflict("Bugungi yetkazish allaqachon qayd etilgan.");
 
       const who = actor.name ?? (supplierSide ? "Supplier" : "Biznes");
       const note = spec.note;
@@ -136,7 +160,7 @@ export function createOrderService(repo: OrderRepository): OrderService {
           orderId, itemId, from: { status: spec.status, ...(spec.delivery ? { deliveryStatus: spec.delivery } : {}) }, to: spec.to,
           ...(supplierSide ? { supplierId: actor.supplierId! } : { businessId: actor.businessId! }),
           ...(spec.contract ? { contract: { unit: PRODUCT_UNITS[order.product as ProductName], startDate: today, endDate: addDays(today, order.days - 1) } } : {}),
-          ...(spec.counts ? { delivery: { today } } : {}),
+          ...(spec.stage ? { delivery: { today, stage: spec.stage } } : {}),
         },
         {
           audit: (o) => audit(actor, `order.${action}`, o, `Buyurtma ${o.publicId} qismi: ${spec.verb}${reason ? ` (${reason})` : ""}`),

@@ -102,10 +102,12 @@ export interface OrderItemTransition {
   /** accept: shartnoma (ACTIVE) yaratiladi va qismga bog'lanadi; qolgan maydonlar buyurtma va qismdan olinadi. */
   contract?: { unit: "L" | "kg"; startDate: ISODate; endDate: ISODate };
   /**
-   * deliver/pickup: yetkazish sanalanadi. Bir kunda bir marta (`lastDeliveredOn` < today), `daysDelivered` +1,
-   * oxirgi kunda qism va shartnoma COMPLETED bo'ladi, aks holda keyingi kun uchun SCHEDULED.
+   * Yetkazish hisobi (bir kunda bir marta: `lastDeliveredOn` < today):
+   * mark — supplier yetkazdi: `lastDeliveredOn` = today, kun HALI hisobga olinmaydi (xaridor tasdig'i kutiladi);
+   * confirm — xaridor qabul qildi: `daysDelivered` +1, oxirgi kunda qism va shartnoma COMPLETED, aks holda keyingi kun uchun SCHEDULED;
+   * both — olib ketish: ikkalasi bir vaqtda.
    */
-  delivery?: { today: ISODate };
+  delivery?: { today: ISODate; stage: "mark" | "confirm" | "both" };
 }
 
 /**
