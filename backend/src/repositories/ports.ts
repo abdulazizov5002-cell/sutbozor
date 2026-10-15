@@ -1,4 +1,4 @@
-import type { DeliveryStatus, NotificationType, OrderItemStatus, PaymentStatus } from "../config/constants";
+import type { DeliveryStatus, DisputeReason, DisputeStatus, NotificationType, OrderItemStatus, PaymentStatus } from "../config/constants";
 import type {
   AuditLog, Business, Contract, Dispute, ISODate, NewAuditLog, Notification, Order, Payment, Product, Supplier, User,
 } from "../domain/entities";
@@ -89,6 +89,8 @@ export interface NewNotification {
 export interface Recipient {
   businessId?: string;
   supplierId?: string;
+  /** Barcha faol adminlar. */
+  admins?: boolean;
 }
 export interface OrderItemTransition {
   orderId: string;
@@ -125,7 +127,38 @@ export interface OrderRepository extends ReadRepository<Order> {
   ): Promise<Order | null>;
 }
 export type ContractRepository = ReadRepository<Contract>;
-export type DisputeRepository = ReadRepository<Dispute>;
+
+export interface NewDispute {
+  orderId: string;
+  paymentId: string | null;
+  contractId: string | null;
+  openedBy: "business" | "supplier";
+  openedById: string;
+  businessId: string;
+  supplierId: string;
+  reason: DisputeReason;
+  description: string;
+}
+export interface DisputeTransition {
+  id: string;
+  /** Faqat shu holatlardagi nizo o'tadi (poyga holatida ikkinchi so'rov null oladi). */
+  from: DisputeStatus[];
+  to: DisputeStatus;
+  resolution?: string;
+  resolvedBy?: string;
+}
+export interface DisputeRepository extends ReadRepository<Dispute> {
+  /** Nizo + `DS-<n>` raqami + audit + bildirishnomalar bitta tranzaksiyada. Shu to'lov/buyurtma bo'yicha ochiq nizo bor bo'lsa 409. */
+  create(
+    input: NewDispute,
+    hooks: { audit: (created: Dispute) => NewAuditLog; recipients: Recipient[]; notify: (created: Dispute) => NewNotification },
+  ): Promise<Dispute>;
+  /** Holat o'tkazish + audit + bildirishnomalar bitta tranzaksiyada. Holat mos kelmasa null. */
+  transition(
+    input: DisputeTransition,
+    hooks: { audit: (updated: Dispute) => NewAuditLog; recipients: Recipient[]; notify: (updated: Dispute) => NewNotification },
+  ): Promise<Dispute | null>;
+}
 
 export interface PaymentTransition {
   id: string;
