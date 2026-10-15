@@ -44,11 +44,11 @@ PostgreSQL (Neon)
 - Demo `admin/admin123` olib tashlangan (A bosqich). `#admin` faqat server tasdiqlagan `ADMIN` bilan ochiladi (`admVerify()`: Telegram kirishi + `GET /api/auth/me`, rol bazadan).
   Panel ichidagi ko'rinish va amallar hali demo (`localStorage`); serverdagi haqiqiy ma'lumot himoyasi backend `requireRole("ADMIN")` da. Alohida admin login (argon2id, 2FA) yo'q.
 - Backend qatlami (ilovadan alohida, topilmasa ham sahifa ishlaydi): `env.js` -> `js/config.js` (`SutBozorConfig`) ->
-  `js/api/apiClient.js` (token faqat xotirada), `authService`, `productService`, `supplierService`, `orderService`, `contractService`, `paymentService`, `js/api/index.js` (`SutBozorApi.get()`).
+  `js/api/apiClient.js` (token faqat xotirada), `authService`, `productService`, `supplierService`, `orderService`, `contractService`, `paymentService`, `ratingService`, `js/api/index.js` (`SutBozorApi.get()`).
 - `env.js` hozir: `env: "production"`, `apiBaseUrl: "https://mizatus.onrender.com"`, `useBackend: true`.
   `useBackend: true` bo'lganda `index.html` oxiridagi blok faqat `loginWithTelegram()` ni chaqiradi va `#srv` qatorida ulanish holatini ko'rsatadi.
   Ilovaning o'zi (buyurtma, to'lov va h.k.) hali ham to'liq `localStorage` bilan ishlaydi.
-  Alohida server bo'limlari (demo'dan mustaqil): `#reg` (ro'yxatdan o'tish), `#sprod` (supplier mahsulotlari), `#sord` (`srvOrders`: biznes buyurtma beradi/bekor qiladi, supplier qabul/rad etadi va kunlik yetkazish tugmalarini bosadi, shartnoma raqami va yetkazilgan kunlar ko'rinadi).
+  Alohida server bo'limlari (demo'dan mustaqil): `#reg` (ro'yxatdan o'tish), `#sprod` (supplier mahsulotlari), `#sord` (`srvOrders`: biznes buyurtma beradi/bekor qiladi, supplier qabul/rad etadi va kunlik yetkazish tugmalarini bosadi, shartnoma raqami va yetkazilgan kunlar ko'rinadi; yakunlangan qismda ikkala tomon uchun "Baholash": 1-5 ball + izoh, `POST /api/ratings`).
   Shuningdek `#spay` (to'lov yozuvlari: biznes "To'lov qildim", supplier "Pul keldi/kelmadi"), `#sdis` (nizo ochish), `#snot` (bildirishnomalar, "O'qidim"), `#adis` (`srvAdmin`, faqat server ADMIN: Nizolar hal qilish, Foydalanuvchilar bloklash/faollashtirish, Buyurtmalar/To'lovlar/Audit log o'qish). `#admin` ichidagi eski bo'limlar hali demo.
 - `scripts/generate-env.js`: deploy vaqtida `env.js` ni `SUTBOZOR_API_URL`, `SUTBOZOR_ENV`, `SUTBOZOR_USE_BACKEND` dan yozadi. `env.js` ochiq fayl, unga sir yozilmaydi.
 
