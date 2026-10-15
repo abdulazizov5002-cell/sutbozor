@@ -54,7 +54,10 @@ const place = async (w: ReturnType<typeof world>, input = body()) => createOrder
     assert.equal(orderItemActionBody.safeParse({ action: "reject", reason: "ab" }).success, false);
     assert.ok(orderItemActionBody.safeParse({ action: "reject", reason: "Sut qolmadi" }).success);
     assert.equal(orderItemActionBody.safeParse({ action: "cancel" }).success, false);
-    assert.equal(orderItemActionBody.safeParse({ action: "deliver" }).success, false);
+    assert.equal(orderItemActionBody.safeParse({ action: "refund" }).success, false);
+    for (const a of ["prepare", "ready", "depart", "deliver", "pickup", "resume"]) assert.ok(orderItemActionBody.safeParse({ action: a }).success, a);
+    assert.equal(orderItemActionBody.safeParse({ action: "pause" }).success, false);
+    assert.ok(orderItemActionBody.safeParse({ action: "pause", reason: "Sigir kasal" }).success);
     assert.equal(orderItemActionBody.safeParse({ action: "accept", status: "ACTIVE" }).success, false);
   });
 
@@ -105,7 +108,9 @@ const place = async (w: ReturnType<typeof world>, input = body()) => createOrder
     assert.equal(b.status, "SENT");
     assert.deepEqual(w.notes[0]!.recipient, { businessId: "bC" }); assert.equal(w.notes[0]!.content.type, "order.accepted");
     assert.equal(w.audits[0]!.action, "order.accept");
-    assert.deepEqual(w.transitions[0], { orderId: o.id, itemId: a.id, to: "ACTIVE", supplierId: SA });
+    const tr = w.transitions[0] as any;
+    assert.deepEqual({ ...tr, contract: undefined }, { orderId: o.id, itemId: a.id, from: { status: "SENT" }, to: { status: "ACTIVE" }, supplierId: SA, contract: undefined });
+    assert.equal(tr.contract.unit, "L"); assert.equal(w.contracts.length, 1);
   });
   await t("reject: sabab xabarda va auditda; holat CANCELLED", async () => {
     const { w, svc, o, a } = await seeded();
@@ -118,7 +123,7 @@ const place = async (w: ReturnType<typeof world>, input = body()) => createOrder
     const r = await svc.act(biz, o.id, b.id, { action: "cancel", reason: "Kerak emas" });
     assert.equal(b.status, "CANCELLED"); assert.equal(r.items.length, 2);
     assert.deepEqual(w.notes[0]!.recipient, { supplierId: SB }); assert.equal(w.notes[0]!.content.type, "order.cancelled");
-    assert.deepEqual(w.transitions[0], { orderId: o.id, itemId: b.id, to: "CANCELLED", businessId: "bC" });
+    assert.deepEqual(w.transitions[0], { orderId: o.id, itemId: b.id, from: { status: "SENT" }, to: { status: "CANCELLED" }, businessId: "bC" });
   });
   await t("huquq: business accept/reject qila olmaydi, supplier cancel qila olmaydi, admin hech narsa -> 403", async () => {
     const { svc, o, a } = await seeded();
@@ -160,7 +165,7 @@ const place = async (w: ReturnType<typeof world>, input = body()) => createOrder
   });
 
   // ---------- Prisma qatlami (soxta tranzaksiya) ----------
-  const fakePrisma = (opts: { failAt?: string; error?: Error; changed?: number; users?: Record<string, string[]>; seqValue?: number } = {}) => {
+  const fakePrisma = (opts: { failAt?: string; error?: Error; changed?: number; users?: Record<string, string[]>; seqValue?: number; item?: Record<string, unknown>; days?: number } = {}) => {
     const ops: string[] = []; const seen: Record<string, any> = {}; let rolled = false;
     const maybeFail = (at: string) => { ops.push(at); if (opts.failAt === at) throw opts.error!; };
     const tx = {
@@ -172,16 +177,23 @@ const place = async (w: ReturnType<typeof world>, input = body()) => createOrder
             id: "o1", publicId: a.data.publicId, businessId: a.data.businessId, product: a.data.product, quantityPerDay: a.data.quantityPerDay,
             days: a.data.days, deliveryMode: a.data.deliveryMode, paymentSchedule: a.data.paymentSchedule, prepTime: a.data.prepTime,
             createdAt: new Date(0), updatedAt: new Date(0),
-            items: a.data.items.create.map((i: any, k: number) => ({ id: `i${k}`, orderId: "o1", deliveryStatus: "SCHEDULED", daysDelivered: 0, contractId: null, status: "SENT", ...i })),
+            items: a.data.items.create.map((i: any, k: number) => ({ id: `i${k}`, orderId: "o1", deliveryStatus: "SCHEDULED", daysDelivered: 0, lastDeliveredOn: null, contractId: null, status: "SENT", ...i })),
           };
         },
         async findUnique(a: any) {
           ops.push("order.findUnique");
-          return { id: "o1", publicId: "SB-1001", businessId: "bC", product: "Sut", quantityPerDay: 5, days: 3, deliveryMode: "supplier", paymentSchedule: "WEEKLY", prepTime: "06:30", createdAt: new Date(0), updatedAt: new Date(0),
-            items: [{ id: a.where.id === "o1" ? "i0" : "x", orderId: "o1", supplierId: SA, quantityPerDay: 5, pricePerUnit: 12000n, status: "ACTIVE", deliveryStatus: "SCHEDULED", daysDelivered: 0, contractId: null }] };
+          return { id: "o1", publicId: "SB-1001", businessId: "bC", product: "Sut", quantityPerDay: 5, days: opts.days ?? 3, deliveryMode: "supplier", paymentSchedule: "WEEKLY", prepTime: "06:30", createdAt: new Date(0), updatedAt: new Date(0),
+            items: [{ id: a.where.id === "o1" ? "i0" : "x", orderId: "o1", supplierId: SA, quantityPerDay: 5, pricePerUnit: 12000n, status: "ACTIVE", deliveryStatus: "SCHEDULED", daysDelivered: 0, lastDeliveredOn: null, contractId: null, ...opts.item }] };
         },
       },
-      orderItem: { async updateMany(a: any) { maybeFail("orderItem.updateMany"); seen.update = a; return { count: opts.changed ?? 1 }; } },
+      orderItem: {
+        async updateMany(a: any) { maybeFail("orderItem.updateMany"); seen.update = a; return { count: opts.changed ?? 1 }; },
+        async update(a: any) { maybeFail("orderItem.update"); seen.itemUpdate = a; return {}; },
+      },
+      contract: {
+        async create(a: any) { maybeFail("contract.create"); seen.contract = a; return { id: "c1" }; },
+        async update(a: any) { maybeFail("contract.update"); seen.contractUpdate = a; return {}; },
+      },
       auditLog: { async create(a: any) { maybeFail("audit.create"); seen.audit = a; return {}; } },
       user: { async findMany(a: any) { ops.push("user.findMany"); (seen.userQueries ??= []).push(a); const key = a.where.supplierId ?? a.where.businessId; return (opts.users?.[key] ?? []).map((id) => ({ id })); } },
       notification: { async createMany(a: any) { maybeFail("notification.createMany"); (seen.notes ??= []).push(a); return { count: a.data.length }; } },
@@ -225,20 +237,124 @@ const place = async (w: ReturnType<typeof world>, input = body()) => createOrder
     const other = fakePrisma({ failAt: "order.create", error: new Error("connection lost") });
     await assert.rejects(() => other.repo.create(NEW, hooks), /connection lost/);
   });
-  await t("prisma transitionItem: SENT sharti + egalik where; audit + bildirishnoma oluvchi", async () => {
-    const f = fakePrisma({ users: { bC: ["u9"] } });
-    const o = await f.repo.transitionItem({ orderId: "o1", itemId: "i0", to: "ACTIVE", supplierId: SA }, { ...hooks, recipient: { businessId: "bC" } });
+  const TR = { orderId: "o1", itemId: "i0", supplierId: SA };
+  const rh = { ...hooks, recipient: { businessId: "bC" } };
+  await t("prisma accept: holat + shartnoma (CT-raqam, narx snapshot, sanalar) + qismga bog'lanish + audit + bildirishnoma", async () => {
+    const f = fakePrisma({ users: { bC: ["u9"] }, seqValue: 1003, item: { status: "SENT" } });
+    const o = await f.repo.transitionItem({ ...TR, from: { status: "SENT" }, to: { status: "ACTIVE" }, contract: { unit: "L", startDate: "2026-10-15", endDate: "2026-10-17" } }, rh);
     assert.equal(o!.id, "o1");
     assert.deepEqual(f.seen.update, { where: { id: "i0", orderId: "o1", status: "SENT", supplierId: SA }, data: { status: "ACTIVE" } });
-    assert.deepEqual(f.ops, ["orderItem.updateMany", "order.findUnique", "audit.create", "user.findMany", "notification.createMany"]);
+    assert.deepEqual(f.ops, ["order.findUnique", "orderItem.updateMany", "sequence.upsert", "contract.create", "orderItem.update", "order.findUnique", "audit.create", "user.findMany", "notification.createMany"]);
+    assert.deepEqual(f.seen.seq.where, { name: "contract" });
+    const c = f.seen.contract.data;
+    assert.equal(c.publicId, "CT-1003"); assert.equal(c.pricePerUnit, 12000n); assert.equal(c.status, "ACTIVE"); assert.equal(c.supplierId, SA); assert.equal(c.businessId, "bC");
+    assert.equal(c.unit, "L"); assert.equal(c.days, 3); assert.equal(c.startDate.toISOString(), "2026-10-15T00:00:00.000Z"); assert.equal(c.endDate.toISOString(), "2026-10-17T00:00:00.000Z");
+    assert.deepEqual(f.seen.itemUpdate, { where: { id: "i0" }, data: { contractId: "c1" } });
     assert.deepEqual(f.seen.userQueries[0].where, { status: "ACTIVE", businessId: "bC" });
-    const g = fakePrisma(); await g.repo.transitionItem({ orderId: "o1", itemId: "i0", to: "CANCELLED", businessId: "bC" }, { ...hooks, recipient: { supplierId: SA } });
-    assert.deepEqual(g.seen.update.where, { id: "i0", orderId: "o1", status: "SENT", order: { businessId: "bC" } });
   });
-  await t("prisma transitionItem: count 0 -> null, hech narsa yozilmaydi", async () => {
+  await t("prisma cancel: businessId sharti order orqali", async () => {
+    const g = fakePrisma(); await g.repo.transitionItem({ orderId: "o1", itemId: "i0", businessId: "bC", from: { status: "SENT" }, to: { status: "CANCELLED" } }, { ...hooks, recipient: { supplierId: SA } });
+    assert.deepEqual(g.seen.update.where, { id: "i0", orderId: "o1", status: "SENT", order: { businessId: "bC" } });
+    assert.equal(g.ops.includes("contract.create"), false);
+  });
+  await t("prisma: count 0 -> null, hech narsa yozilmaydi", async () => {
     const f = fakePrisma({ changed: 0 });
-    assert.equal(await f.repo.transitionItem({ orderId: "o1", itemId: "i0", to: "ACTIVE", supplierId: SA }, { ...hooks, recipient: { businessId: "bC" } }), null);
-    assert.deepEqual(f.ops, ["orderItem.updateMany"]);
+    assert.equal(await f.repo.transitionItem({ ...TR, from: { status: "SENT" }, to: { status: "ACTIVE" } }, rh), null);
+    assert.deepEqual(f.ops, ["order.findUnique", "orderItem.updateMany"]);
+  });
+  await t("prisma yetkazish bosqichi: deliveryStatus sharti, faqat deliveryStatus o'zgaradi, shartnomaga tegmaydi; bildirishnoma null -> yaratilmaydi", async () => {
+    const f = fakePrisma({ users: { bC: ["u9"] }, item: { contractId: "c1" } });
+    await f.repo.transitionItem({ ...TR, from: { status: "ACTIVE", deliveryStatus: "SCHEDULED" }, to: { deliveryStatus: "PREPARING" } }, { ...rh, notify: () => null });
+    assert.deepEqual(f.seen.update, { where: { id: "i0", orderId: "o1", status: "ACTIVE", deliveryStatus: "SCHEDULED", supplierId: SA }, data: { deliveryStatus: "PREPARING" } });
+    assert.equal(f.ops.includes("contract.update"), false); assert.equal(f.ops.includes("notification.createMany"), false); assert.equal(f.ops.includes("user.findMany"), false);
+  });
+  await t("prisma to'xtatish/davom: shartnoma holati ham o'zgaradi", async () => {
+    const f = fakePrisma({ item: { contractId: "c1" } });
+    await f.repo.transitionItem({ ...TR, from: { status: "ACTIVE", deliveryStatus: "SCHEDULED" }, to: { status: "PAUSED" } }, rh);
+    assert.deepEqual(f.seen.contractUpdate, { where: { id: "c1" }, data: { status: "PAUSED" } });
+    const g = fakePrisma({ item: { contractId: "c1", status: "PAUSED" } });
+    await g.repo.transitionItem({ ...TR, from: { status: "PAUSED" }, to: { status: "ACTIVE" } }, rh);
+    assert.deepEqual(g.seen.contractUpdate, { where: { id: "c1" }, data: { status: "ACTIVE" } });
+  });
+  await t("prisma yetkazish: hisob +1, sana, bir kunda bir marta sharti, keyingi kun SCHEDULED", async () => {
+    const f = fakePrisma({ days: 3, item: { daysDelivered: 1, deliveryStatus: "IN_TRANSIT", contractId: "c1" } });
+    await f.repo.transitionItem({ ...TR, from: { status: "ACTIVE", deliveryStatus: "IN_TRANSIT" }, to: {}, delivery: { today: "2026-10-16" } }, rh);
+    const w = f.seen.update.where;
+    assert.deepEqual(w.OR, [{ lastDeliveredOn: null }, { lastDeliveredOn: { lt: new Date("2026-10-16T00:00:00.000Z") } }]);
+    assert.equal(f.seen.update.data.daysDelivered, 2); assert.equal(f.seen.update.data.deliveryStatus, "SCHEDULED"); assert.equal(f.seen.update.data.status, "ACTIVE");
+    assert.equal(f.seen.update.data.lastDeliveredOn.toISOString(), "2026-10-16T00:00:00.000Z");
+    assert.equal(f.ops.includes("contract.update"), false);
+  });
+  await t("prisma yetkazish: oxirgi kun -> qism va shartnoma COMPLETED", async () => {
+    const f = fakePrisma({ days: 3, item: { daysDelivered: 2, deliveryStatus: "IN_TRANSIT", contractId: "c1" } });
+    await f.repo.transitionItem({ ...TR, from: { status: "ACTIVE", deliveryStatus: "IN_TRANSIT" }, to: {}, delivery: { today: "2026-10-17" } }, rh);
+    assert.equal(f.seen.update.data.daysDelivered, 3); assert.equal(f.seen.update.data.status, "COMPLETED"); assert.equal(f.seen.update.data.deliveryStatus, "DELIVERED");
+    assert.deepEqual(f.seen.contractUpdate, { where: { id: "c1" }, data: { status: "COMPLETED" } });
+  });
+  await t("prisma: shartnoma xatosi -> butun tranzaksiya bekor", async () => {
+    const f = fakePrisma({ failAt: "contract.create", error: new Error("db down"), item: { status: "SENT" } });
+    await assert.rejects(() => f.repo.transitionItem({ ...TR, from: { status: "SENT" }, to: { status: "ACTIVE" }, contract: { unit: "L", startDate: "2026-10-15", endDate: "2026-10-17" } }, rh), /db down/);
+    assert.ok(f.rolled());
+  });
+
+  // ---------- E bosqichi: servis (shartnoma va yetkazish sikli) ----------
+  const TODAY = new Date().toLocaleDateString("en-CA", { timeZone: "Asia/Tashkent" });
+  const flow = async (mode: "supplier" | "pickup" = "supplier", days = 2) => {
+    const w = world(); const svc = createOrderService(w.repo);
+    const o = await svc.create(biz, createOrderBody.parse(body({ deliveryMode: mode, days, items: [{ supplierId: SA, quantityPerDay: 5 }] })));
+    const it = o.items[0]!; const act = (u: AuthUser, action: string, reason = "") => svc.act(u, o.id, it.id, { action, reason } as never);
+    return { w, svc, o, it, act };
+  };
+  await t("accept: shartnoma bugundan boshlanadi, muddat days-1 kun, birlik nomdan", async () => {
+    const { w, act } = await flow("supplier", 30); await act(supA, "accept");
+    const c = w.contracts[0]!; assert.equal(c.startDate, TODAY); assert.equal(c.unit, "L"); assert.equal(c.supplierId, SA); assert.equal(c.status, "ACTIVE");
+    const end = new Date(`${TODAY}T00:00:00Z`); end.setUTCDate(end.getUTCDate() + 29); assert.equal(c.endDate, end.toISOString().slice(0, 10));
+  });
+  await t("yetkazish sikli (yetkazib berish): prepare -> ready -> depart -> deliver; kun hisobi +1, bildirishnomalar", async () => {
+    const { w, it, act } = await flow(); await act(supA, "accept"); w.notes.length = 0;
+    await act(supA, "prepare"); assert.equal(it.deliveryStatus, "PREPARING");
+    await act(supA, "ready"); assert.equal(it.deliveryStatus, "READY"); assert.equal(w.notes.at(-1)!.content.type, "delivery.ready");
+    await act(supA, "depart"); assert.equal(it.deliveryStatus, "IN_TRANSIT");
+    await act(supA, "deliver"); assert.equal(it.daysDelivered, 1); assert.equal(it.deliveryStatus, "SCHEDULED"); assert.equal(it.status, "ACTIVE"); assert.equal(it.lastDeliveredOn, TODAY);
+    assert.equal(w.notes.at(-1)!.content.type, "delivery.done"); assert.deepEqual(w.notes.at(-1)!.recipient, { businessId: "bC" });
+    assert.equal(w.notes.length, 2); // prepare va depart uchun bildirishnoma yo'q
+  });
+  await t("bir kunda ikkinchi yetkazish -> 409 (kun hisobi aldanmaydi)", async () => {
+    const { it, act } = await flow(); await act(supA, "accept");
+    for (const a of ["prepare", "ready", "depart", "deliver", "prepare", "ready", "depart"]) await act(supA, a);
+    assert.equal(await errOf(() => act(supA, "deliver")), "CONFLICT:409"); assert.equal(it.daysDelivered, 1);
+  });
+  await t("oxirgi kun yetkazilgach qism va shartnoma COMPLETED", async () => {
+    const { w, it, act } = await flow("supplier", 1); await act(supA, "accept");
+    for (const a of ["prepare", "ready", "depart", "deliver"]) await act(supA, a);
+    assert.equal(it.status, "COMPLETED"); assert.equal(it.deliveryStatus, "DELIVERED"); assert.equal(w.contracts[0]!.status, "COMPLETED");
+    assert.equal(await errOf(() => act(supA, "prepare")), "CONFLICT:409");
+  });
+  await t("olib ketish rejimi: depart/deliver mumkin emas; ready -> business pickup; supplierga bildirishnoma", async () => {
+    const { w, it, act } = await flow("pickup"); await act(supA, "accept"); await act(supA, "prepare"); await act(supA, "ready");
+    assert.equal(await errOf(() => act(supA, "depart")), "CONFLICT:409"); assert.equal(await errOf(() => act(supA, "deliver")), "CONFLICT:409");
+    assert.equal(await errOf(() => act(supA, "pickup")), "FORBIDDEN:403");
+    await act(biz, "pickup"); assert.equal(it.daysDelivered, 1); assert.deepEqual(w.notes.at(-1)!.recipient, { supplierId: SA });
+  });
+  await t("yetkazib berish rejimida pickup -> 409; sirasiz harakat -> 409 (ready'dan oldin depart, accept'dan oldin prepare)", async () => {
+    const { it, act } = await flow(); assert.equal(await errOf(() => act(supA, "prepare")), "CONFLICT:409");
+    await act(supA, "accept"); assert.equal(await errOf(() => act(supA, "depart")), "CONFLICT:409"); assert.equal(await errOf(() => act(supA, "ready")), "CONFLICT:409");
+    await act(supA, "prepare"); await act(supA, "ready"); assert.equal(await errOf(() => act(biz, "pickup")), "CONFLICT:409"); assert.equal(it.daysDelivered, 0);
+  });
+  await t("pause: faqat SCHEDULED holatda (yo'lda emas), sabab bilan; resume qaytaradi; shartnoma holati ergashadi", async () => {
+    const { w, it, act } = await flow(); await act(supA, "accept"); await act(supA, "prepare");
+    assert.equal(await errOf(() => act(supA, "pause", "kasal")), "CONFLICT:409"); // tayyorlash paytida to'xtatib bo'lmaydi
+    const f2 = await flow(); await f2.act(supA, "accept");
+    await f2.act(supA, "pause", "Sigir kasal"); assert.equal(f2.it.status, "PAUSED"); assert.equal(f2.w.contracts[0]!.status, "PAUSED"); assert.equal(f2.w.notes.at(-1)!.content.type, "order.paused");
+    assert.equal(await errOf(() => f2.act(supA, "prepare")), "CONFLICT:409");
+    await f2.act(supA, "resume"); assert.equal(f2.it.status, "ACTIVE"); assert.equal(f2.w.contracts[0]!.status, "ACTIVE");
+    assert.ok(w && it);
+  });
+  await t("E huquqlar: biznes yetkazish harakatini, supplier pickup qila olmaydi; begona supplier -> 404; admin -> 403", async () => {
+    const { act } = await flow(); await act(supA, "accept");
+    for (const a of ["prepare", "ready", "depart", "deliver", "pause", "resume"]) assert.equal(await errOf(() => act(biz, a, "sababli")), "FORBIDDEN:403", a);
+    for (const a of ["prepare", "pickup"]) assert.equal(await errOf(() => act(adm, a)), "FORBIDDEN:403", a);
+    assert.equal(await errOf(() => act(supB, "prepare")), "NOT_FOUND:404");
   });
 
   console.log(`orders: ${pass} passed, ${fail} failed`);

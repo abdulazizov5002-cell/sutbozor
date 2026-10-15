@@ -205,6 +205,8 @@ model OrderItem {
   status         OrderItemStatus @default(SENT)
   deliveryStatus DeliveryStatus  @default(SCHEDULED)
   daysDelivered  Int             @default(0)
+  /// Oxirgi yetkazilgan sana (Asia/Tashkent): bir kunda bir marta yetkazish qayd etiladi.
+  lastDeliveredOn DateTime?      @db.Date
   contractId     String?         @unique
   contract       Contract?       @relation(fields: [contractId], references: [id])
   ratings        Rating[]

@@ -55,11 +55,12 @@ export const mapProduct = (r: {
 
 export const mapOrderItem = (r: {
   id: string; orderId: string; supplierId: string; quantityPerDay: DecimalLike; pricePerUnit: bigint;
-  status: OrderItem["status"]; deliveryStatus: OrderItem["deliveryStatus"]; daysDelivered: number; contractId: string | null;
+  status: OrderItem["status"]; deliveryStatus: OrderItem["deliveryStatus"]; daysDelivered: number;
+  lastDeliveredOn: Date | null; contractId: string | null;
 }): OrderItem => ({
   id: r.id, orderId: r.orderId, supplierId: r.supplierId, quantityPerDay: num(r.quantityPerDay),
   pricePerUnit: money(r.pricePerUnit), status: r.status, deliveryStatus: r.deliveryStatus,
-  daysDelivered: r.daysDelivered, contractId: r.contractId,
+  daysDelivered: r.daysDelivered, lastDeliveredOn: r.lastDeliveredOn ? day(r.lastDeliveredOn) : null, contractId: r.contractId,
 });
 
 export const mapOrder = (r: {

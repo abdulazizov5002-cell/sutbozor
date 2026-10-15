@@ -1,8 +1,10 @@
+import { PRODUCT_UNITS, type DeliveryMode, type DeliveryStatus, type NotificationType, type OrderItemStatus, type Permission, type ProductName } from "../config/constants";
 import type { NewAuditLog, Order } from "../domain/entities";
 import { canAccessOrder, ownerScope, viewOrder } from "../policies/ownership";
 import type { NewNotification, OrderRepository } from "../repositories/ports";
-import type { CreateOrderBody, OrderItemActionBody } from "../schemas/order.schemas";
+import type { CreateOrderBody, OrderItemAction, OrderItemActionBody } from "../schemas/order.schemas";
 import type { AuthUser } from "../types/fastify";
+import { addDays, todayInBusinessZone } from "../utils/date";
 import { badRequest, conflict, forbidden, notFound } from "../utils/errors";
 import { hasPermission } from "./permission.service";
 import { createScopedReadService, type ReadService } from "./scopedRead.service";
@@ -12,13 +14,50 @@ export interface OrderService extends ReadService<Order> {
   act(actor: AuthUser, orderId: string, itemId: string, input: OrderItemActionBody): Promise<Order>;
 }
 
+/** Bitta harakat qoidasi: kim, qaysi huquq bilan, qaysi holatdan qaysi holatga o'tkazadi. */
+interface ActionSpec {
+  who: "supplier" | "business";
+  perm: Permission;
+  status: OrderItemStatus;
+  delivery?: DeliveryStatus;
+  mode?: DeliveryMode;
+  to: { status?: OrderItemStatus; deliveryStatus?: DeliveryStatus };
+  /** accept: shartnoma yaratadi. */
+  contract?: boolean;
+  /** deliver/pickup: yetkazish kuniga +1 (bir kunda bir marta). */
+  counts?: boolean;
+  verb: string;
+  note?: { type: NotificationType; title: string; text: string };
+}
+const ACTIONS: Record<OrderItemAction, ActionSpec> = {
+  accept: { who: "supplier", perm: "orders.accept", status: "SENT", to: { status: "ACTIVE" }, contract: true, verb: "qabul qilindi",
+    note: { type: "order.accepted", title: "Buyurtma qabul qilindi", text: "buyurtmangizni qabul qildi. Shartnoma yaratildi." } },
+  reject: { who: "supplier", perm: "orders.reject", status: "SENT", to: { status: "CANCELLED" }, verb: "rad etildi",
+    note: { type: "order.rejected", title: "Buyurtma rad etildi", text: "buyurtmangizni rad etdi." } },
+  cancel: { who: "business", perm: "orders.create", status: "SENT", to: { status: "CANCELLED" }, verb: "bekor qilindi",
+    note: { type: "order.cancelled", title: "Buyurtma bekor qilindi", text: "buyurtmani bekor qildi." } },
+  prepare: { who: "supplier", perm: "delivery.update", status: "ACTIVE", delivery: "SCHEDULED", to: { deliveryStatus: "PREPARING" }, verb: "tayyorlash boshlandi" },
+  ready: { who: "supplier", perm: "delivery.update", status: "ACTIVE", delivery: "PREPARING", to: { deliveryStatus: "READY" }, verb: "tayyor",
+    note: { type: "delivery.ready", title: "Mahsulot tayyor", text: "mahsulot tayyor." } },
+  depart: { who: "supplier", perm: "delivery.update", status: "ACTIVE", delivery: "READY", mode: "supplier", to: { deliveryStatus: "IN_TRANSIT" }, verb: "yo'lga chiqdi" },
+  deliver: { who: "supplier", perm: "delivery.update", status: "ACTIVE", delivery: "IN_TRANSIT", mode: "supplier", to: {}, counts: true, verb: "yetkazildi",
+    note: { type: "delivery.done", title: "Mahsulot yetkazildi", text: "mahsulotni yetkazdi." } },
+  pickup: { who: "business", perm: "orders.create", status: "ACTIVE", delivery: "READY", mode: "pickup", to: {}, counts: true, verb: "olib ketildi",
+    note: { type: "delivery.done", title: "Mahsulot olib ketildi", text: "mahsulotni olib ketdi." } },
+  pause: { who: "supplier", perm: "delivery.update", status: "ACTIVE", delivery: "SCHEDULED", to: { status: "PAUSED" }, verb: "to'xtatildi",
+    note: { type: "order.paused", title: "Yetkazish to'xtatildi", text: "yetkazishni to'xtatdi." } },
+  resume: { who: "supplier", perm: "delivery.update", status: "PAUSED", to: { status: "ACTIVE" }, verb: "davom ettirildi",
+    note: { type: "order.resumed", title: "Yetkazish davom etadi", text: "yetkazishni davom ettirdi." } },
+};
+
 const round2 = (n: number): number => Math.round(n * 100) / 100;
 
 /**
  * Buyurtmalar (D bosqichi): business supplierni o'zi tanlaydi; supplier o'z qismini qabul/rad etadi; business SENT qismini bekor qiladi.
  * Server qoidalari: narx HAR DOIM supplier mahsulotidan olinadi; miqdor kunlik hajmdan oshmaydi; faqat faol supplier;
  * begona buyurtma uchun 404; tartib: validatsiya (400) -> huquq (403) -> egalik (404) -> holat (409).
- * Shartnoma, yetkazish va to'lov E/F bosqichlarida (qabul qilish hozircha faqat holatni ACTIVE qiladi).
+ * E bosqichi: qabul qilish shartnoma (CT-<n>) yaratadi; yetkazish kunlik sikl (tayyorlash -> tayyor -> yo'lda -> yetkazildi),
+ * bir kunda bir marta; muddat tugagach qism va shartnoma COMPLETED. To'lov F bosqichida.
  */
 export function createOrderService(repo: OrderRepository): OrderService {
   const reader = createScopedReadService<Order>({
@@ -67,42 +106,45 @@ export function createOrderService(repo: OrderRepository): OrderService {
 
     async act(actor, orderId, itemId, input) {
       const { action, reason } = input;
-      // Huquq (403): accept/reject faqat supplier, cancel faqat business.
-      const needed = action === "accept" ? "orders.accept" : action === "reject" ? "orders.reject" : "orders.create";
+      const spec = ACTIONS[action];
+      // Huquq (403): har harakat o'z roli va permissioniga ega.
       if (actor.status !== "ACTIVE") throw forbidden("Hisob faol emas.");
-      if (!hasPermission(actor.role, needed)) throw forbidden();
-      const isSupplierAction = action !== "cancel";
-      if (isSupplierAction ? !actor.supplierId : !actor.businessId) throw forbidden("Hisob biriktirilmagan.");
+      if (!hasPermission(actor.role, spec.perm)) throw forbidden();
+      const supplierSide = spec.who === "supplier";
+      if (supplierSide ? !actor.supplierId : !actor.businessId) throw forbidden("Hisob biriktirilmagan.");
 
       // Egalik (404): begona yoki yo'q buyurtma/qism bir xil javob beradi.
       const order = await repo.findById(orderId);
       if (!order || !canAccessOrder(actor, order)) throw notFound();
       const item = order.items.find((i) => i.id === itemId);
-      if (!item || (isSupplierAction && item.supplierId !== actor.supplierId)) throw notFound();
+      if (!item || (supplierSide && item.supplierId !== actor.supplierId)) throw notFound();
 
       // Holat (409)
-      if (item.status !== "SENT") throw conflict("Bu qism allaqachon ko'rib chiqilgan. Sahifani yangilang.");
+      const today = todayInBusinessZone();
+      const stale = "Bu amal hozirgi holatda mumkin emas. Sahifani yangilang.";
+      if (item.status !== spec.status || (spec.delivery && item.deliveryStatus !== spec.delivery)) throw conflict(stale);
+      if (spec.mode && order.deliveryMode !== spec.mode) throw conflict("Bu amal buyurtmaning yetkazish turiga mos emas.");
+      if (spec.counts && item.lastDeliveredOn === today) throw conflict("Bugungi yetkazish allaqachon qayd etilgan.");
 
-      const who = actor.name ?? (isSupplierAction ? "Supplier" : "Biznes");
-      const verb = { accept: "qabul qildi", reject: "rad etdi", cancel: "bekor qildi" }[action];
-      const notify = (o: Order): NewNotification => ({
-        type: action === "accept" ? "order.accepted" : action === "reject" ? "order.rejected" : "order.cancelled",
-        title: action === "accept" ? "Buyurtma qabul qilindi" : action === "reject" ? "Buyurtma rad etildi" : "Buyurtma bekor qilindi",
-        message: `${who} ${o.publicId} buyurtmasini ${verb}.${reason ? ` Sabab: ${reason}` : ""}`,
-      });
+      const who = actor.name ?? (supplierSide ? "Supplier" : "Biznes");
+      const note = spec.note;
+      const notify = (o: Order): NewNotification | null =>
+        note ? { type: note.type, title: note.title, message: `${who} ${o.publicId}: ${note.text}${reason ? ` Sabab: ${reason}` : ""}` } : null;
 
       const updated = await repo.transitionItem(
         {
-          orderId, itemId, to: action === "accept" ? "ACTIVE" : "CANCELLED",
-          ...(isSupplierAction ? { supplierId: actor.supplierId! } : { businessId: actor.businessId! }),
+          orderId, itemId, from: { status: spec.status, ...(spec.delivery ? { deliveryStatus: spec.delivery } : {}) }, to: spec.to,
+          ...(supplierSide ? { supplierId: actor.supplierId! } : { businessId: actor.businessId! }),
+          ...(spec.contract ? { contract: { unit: PRODUCT_UNITS[order.product as ProductName], startDate: today, endDate: addDays(today, order.days - 1) } } : {}),
+          ...(spec.counts ? { delivery: { today } } : {}),
         },
         {
-          audit: (o) => audit(actor, `order.${action}`, o, `Buyurtma ${o.publicId} qismi: ${verb}${reason ? ` (${reason})` : ""}`),
-          recipient: isSupplierAction ? { businessId: order.businessId } : { supplierId: item.supplierId },
+          audit: (o) => audit(actor, `order.${action}`, o, `Buyurtma ${o.publicId} qismi: ${spec.verb}${reason ? ` (${reason})` : ""}`),
+          recipient: supplierSide ? { businessId: order.businessId } : { supplierId: item.supplierId },
           notify,
         },
       );
-      if (!updated) throw conflict("Bu qism allaqachon ko'rib chiqilgan. Sahifani yangilang.");
+      if (!updated) throw conflict(stale);
       return viewOrder(actor, updated);
     },
   };

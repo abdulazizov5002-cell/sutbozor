@@ -1,4 +1,4 @@
-import type { NotificationType } from "../config/constants";
+import type { DeliveryStatus, NotificationType, OrderItemStatus } from "../config/constants";
 import type {
   AuditLog, Business, Contract, Dispute, ISODate, NewAuditLog, Notification, Order, Payment, Product, Supplier, User,
 } from "../domain/entities";
@@ -93,11 +93,19 @@ export interface Recipient {
 export interface OrderItemTransition {
   orderId: string;
   itemId: string;
-  /** Faqat SENT holatidagi qism o'tadi (poyga holatida ikkinchi so'rov null oladi). */
-  to: "ACTIVE" | "CANCELLED";
   /** Qo'shimcha himoya: qism shu supplierga / buyurtma shu bizneska tegishli bo'lishi shart. */
   supplierId?: string;
   businessId?: string;
+  /** Faqat shu holatdagi qism o'tadi (poyga holatida ikkinchi so'rov null oladi). */
+  from: { status: OrderItemStatus; deliveryStatus?: DeliveryStatus };
+  to: { status?: OrderItemStatus; deliveryStatus?: DeliveryStatus };
+  /** accept: shartnoma (ACTIVE) yaratiladi va qismga bog'lanadi; qolgan maydonlar buyurtma va qismdan olinadi. */
+  contract?: { unit: "L" | "kg"; startDate: ISODate; endDate: ISODate };
+  /**
+   * deliver/pickup: yetkazish sanalanadi. Bir kunda bir marta (`lastDeliveredOn` < today), `daysDelivered` +1,
+   * oxirgi kunda qism va shartnoma COMPLETED bo'ladi, aks holda keyingi kun uchun SCHEDULED.
+   */
+  delivery?: { today: ISODate };
 }
 
 /**
@@ -108,10 +116,10 @@ export interface OrderRepository extends ReadRepository<Order> {
   findOfferings(supplierIds: string[], product: string): Promise<Offering[]>;
   /** Buyurtma + qismlar (status SENT) + `SB-<n>` raqami; har qism supplierining foydalanuvchilariga `notify`. */
   create(input: NewOrder, hooks: { audit: (created: Order) => NewAuditLog; notify: (created: Order) => NewNotification }): Promise<Order>;
-  /** SENT -> ACTIVE/CANCELLED. Qism SENT emas yoki egalik mos kelmasa null. */
+  /** Qism holatini o'tkazadi (shartnoma, yetkazish hisobi bilan). Holat/egalik mos kelmasa yoki bugun allaqachon yetkazilgan bo'lsa null. `notify` null qaytarsa bildirishnoma yaratilmaydi. */
   transitionItem(
     input: OrderItemTransition,
-    hooks: { audit: (updated: Order) => NewAuditLog; recipient: Recipient; notify: (updated: Order) => NewNotification },
+    hooks: { audit: (updated: Order) => NewAuditLog; recipient: Recipient; notify: (updated: Order) => NewNotification | null },
   ): Promise<Order | null>;
 }
 export type ContractRepository = ReadRepository<Contract>;

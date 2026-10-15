@@ -67,6 +67,8 @@ export interface OrderItem {
   status: OrderItemStatus;
   deliveryStatus: DeliveryStatus;
   daysDelivered: number;
+  /** Oxirgi yetkazilgan sana (YYYY-MM-DD, Asia/Tashkent) yoki null. */
+  lastDeliveredOn: ISODate | null;
   contractId: string | null;
 }
 

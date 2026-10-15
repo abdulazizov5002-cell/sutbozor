@@ -86,7 +86,7 @@ describe("/api/orders (yaratish, harakatlar, o'qish)", () => {
   });
   test("harakat: noto'g'ri body 400 (sababsiz rad, noma'lum harakat, noto'g'ri uuid)", async () => {
     assert.equal((await call("POST", `/api/orders/${orderId}/items/${itemA}`, "supA", { action: "reject" })).statusCode, 400);
-    assert.equal((await call("POST", `/api/orders/${orderId}/items/${itemA}`, "supA", { action: "deliver" })).statusCode, 400);
+    assert.equal((await call("POST", `/api/orders/${orderId}/items/${itemA}`, "supA", { action: "refund" })).statusCode, 400);
     assert.equal((await call("POST", `/api/orders/${orderId}/items/zzz`, "supA", { action: "accept" })).statusCode, 400);
   });
   test("harakat: huquq 403 (biznes accept, supplier cancel, admin)", async () => {
@@ -108,5 +108,16 @@ describe("/api/orders (yaratish, harakatlar, o'qish)", () => {
     const res = await call("POST", `/api/orders/${orderId}/items/${itemB}`, "biz", { action: "cancel", reason: "fikr o'zgardi" });
     assert.equal(res.statusCode, 200);
     assert.deepEqual(json(res).data.items.map((i: any) => i.status), ["ACTIVE", "CANCELLED"]);
+  });
+  test("E: yetkazish sikli HTTP orqali; sirasiz 409; bir kunda ikkinchi marta 409; huquq 403", async () => {
+    const url = `/api/orders/${orderId}/items/${itemA}`;
+    assert.equal((await call("POST", url, "supA", { action: "depart" })).statusCode, 409); // tayyor emas
+    assert.equal((await call("POST", url, "biz", { action: "prepare" })).statusCode, 403);
+    for (const a of ["prepare", "ready", "depart"]) assert.equal((await call("POST", url, "supA", { action: a })).statusCode, 200, a);
+    const done = await call("POST", url, "supA", { action: "deliver" });
+    assert.equal(done.statusCode, 200); assert.equal(json(done).data.items[0].daysDelivered, 1);
+    for (const a of ["prepare", "ready", "depart"]) assert.equal((await call("POST", url, "supA", { action: a })).statusCode, 200, a);
+    assert.equal((await call("POST", url, "supA", { action: "deliver" })).statusCode, 409); // bugun allaqachon yetkazilgan
+    assert.equal((await call("POST", url, "supA", { action: "pause" })).statusCode, 400); // sababsiz
   });
 });

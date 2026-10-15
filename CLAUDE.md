@@ -75,18 +75,18 @@ PostgreSQL (Neon)
   | `GET /api/{users,businesses,suppliers,orders,contracts,payments,disputes,notifications}` va `/:id` | faqat o'qish, auth + permission + egalik |
   | `GET /api/products`, `/:id` | biznes bozorni, supplier o'zinikini ko'radi |
   | `POST /api/orders` | faqat business (`orders.create`): supplierlarni o'zi tanlaydi (`items: [{supplierId, quantityPerDay}]`); narx serverda supplier mahsulotidan olinadi (snapshot), miqdor kunlik hajmdan oshmaydi, faqat faol supplier; `SB-<n>` raqam; buyurtma + audit + bildirishnoma bitta tranzaksiyada |
-  | `POST /api/orders/:id/items/:itemId` | `{action: accept\|reject\|cancel, reason?}`: supplier o'z qismini qabul/rad etadi, business SENT qismini bekor qiladi; faqat SENT holatida (aks holda 409), begona -> 404; rad/bekor uchun sabab majburiy. Shartnoma/yetkazish/to'lov hali yo'q (E/F) |
+  | `POST /api/orders/:id/items/:itemId` | `{action, reason?}`: supplier `accept` (shartnoma CT-<n> yaratadi, ACTIVE), `reject`, `prepare`->`ready`->`depart`->`deliver` (kunlik yetkazish, bir kunda bir marta, `daysDelivered`+1, oxirgi kunda qism va shartnoma COMPLETED), `pause`/`resume`; business `cancel` (faqat SENT) va `pickup` (olib ketish rejimi). Noto'g'ri holat -> 409, begona -> 404, rad/bekor/to'xtatish uchun sabab majburiy. To'lov hali yo'q (F) |
   | `POST /api/products`, `PATCH /api/products/:id`, `DELETE /api/products/:id` | faqat supplier (`products.manage`), faqat o'z mahsuloti (begona -> 404); supplierId tokendan, birlik nomdan; audit bilan bitta tranzaksiyada |
   | `GET /api/admin/audit-logs` | faqat `ADMIN` + `audit.view` |
   | `GET /api/auth`, `GET /api/admin` | `501 NOT_IMPLEMENTED` |
-  Yozish endpointlari (shartnoma, to'lov, nizo va h.k.), logout/refresh, admin login **hali yo'q**.
+  Yozish endpointlari (to'lov, nizo va h.k.), logout/refresh, admin login **hali yo'q**.
   Frontenddagi `adminLogin()` va `logout()` chaqiradigan yo'llar backendda mavjud emas.
 - Javob formati: `{ "success": true, "data": ... }` / `{ "success": false, "error": { code, message, details? } }`, har javobda `x-request-id`.
 - Validatsiya: Zod (`src/schemas`, `src/validation`), o'zbekcha xato matnlari, `strictObject` (ortiqcha `role`/`status` maydonlari rad etiladi).
 - Xavfsizlik: Helmet, CORS ro'yxati, rate limit (global 100/min, auth 10/min, write 30/min), body limit, `Cache-Control: no-store`,
   log'dan parol/token/initData/sir/to'lov rekvizitlari tozalanadi (`src/logging`).
 - Baza: `prisma/schema.prisma` (User, Business, Supplier, Product, Order, OrderItem, Contract, Payment, Dispute, Notification, AuditLog, Rating, Sequence, TelegramAccount).
-  Migratsiya: `prisma/migrations/20261011000000_init/migration.sql` (ichida `constraints.sql` dagi CHECK'lar: 0% komissiya
+  Migratsiyalar: `20261015120000_order_item_last_delivered` (`order_items.lastDeliveredOn`), `20261015000000_user_email_optional`, `prisma/migrations/20261011000000_init/migration.sql` (ichida `constraints.sql` dagi CHECK'lar: 0% komissiya
   `platformCommission = 0 AND grossAmount = amount`, manfiy qiymat taqiqi, `users_role_link`, audit_logs faqat qo'shiladi).
   Pul ustunlari `BigInt`; `BigInt <-> number` aylantirish **faqat** `src/repositories/prisma/mappers.ts` da (2^53-1 dan katta qiymat xato).
 - Birinchi admin qo'lda SQL bilan yaratiladi: `backend/docs/ADMIN_BOOTSTRAP.md`.
