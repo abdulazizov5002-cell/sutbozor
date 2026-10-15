@@ -1,4 +1,4 @@
-import type { DeliveryStatus, DisputeReason, DisputeStatus, NotificationType, OrderItemStatus, PaymentStatus } from "../config/constants";
+import type { DeliveryStatus, DisputeReason, DisputeStatus, NotificationType, OrderItemStatus, PaymentStatus, UserStatus } from "../config/constants";
 import type {
   AuditLog, Business, Contract, Dispute, ISODate, NewAuditLog, Notification, Order, Payment, Product, Supplier, User,
 } from "../domain/entities";
@@ -35,7 +35,18 @@ export interface ReadRepository<T> {
   list(scope: Scope, params: ListParams): Promise<Page<T>>;
 }
 
-export type UserRepository = ReadRepository<User>;
+export interface UserStatusTransition {
+  id: string;
+  /** Faqat shu holatdagi foydalanuvchi o'tadi (poyga holatida ikkinchi so'rov null oladi). */
+  from: UserStatus[];
+  to: UserStatus;
+  /** Shu roldagi foydalanuvchi o'tkazilmaydi (adminlarni bu yo'l bilan bloklab bo'lmaydi). */
+  excludeRole: User["role"];
+}
+export interface UserRepository extends ReadRepository<User> {
+  /** Holat o'tkazish + audit bitta tranzaksiyada. Holat/rol mos kelmasa null. */
+  transitionStatus(input: UserStatusTransition, hooks: { audit: (updated: User) => NewAuditLog }): Promise<User | null>;
+}
 export type BusinessRepository = ReadRepository<Business>;
 export type SupplierRepository = ReadRepository<Supplier>;
 export interface NewProduct {

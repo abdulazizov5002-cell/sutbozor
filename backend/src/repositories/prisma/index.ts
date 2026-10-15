@@ -2,7 +2,7 @@ import type { PrismaClient } from "@prisma/client";
 import { conflict } from "../../utils/errors";
 import type { NewAuditLog } from "../../domain/entities";
 import { buildPaymentPlan, deliveryPayment, type PlannedPayment } from "../../domain/paymentPlan";
-import type { DisputeRepository, ListParams, NewNotification, OrderRepository, Page, PaymentRepository, ProductRepository, ReadRepository, Repositories, Recipient, Scope } from "../ports";
+import type { DisputeRepository, UserRepository, ListParams, NewNotification, OrderRepository, Page, PaymentRepository, ProductRepository, ReadRepository, Repositories, Recipient, Scope } from "../ports";
 import {
   mapAuditLog, mapBusiness, mapContract, mapDispute, mapNotification, mapOrder, mapPayment, mapProduct, mapSupplier, mapUser, money, toBigInt,
 } from "./mappers";
@@ -52,7 +52,10 @@ const party = (s: Scope) => ({
 export function createPrismaRepositories(prisma: PrismaClient): Repositories {
   const db = prisma as unknown as Record<string, Delegate & { updateMany(args: any): Promise<{ count: number }>; create(args: any): Promise<any> }>;
   return {
-    users: readRepository({ delegate: db.user!, map: mapUser, orderBy: { createdAt: "asc" } }),
+    users: {
+      ...readRepository({ delegate: db.user!, map: mapUser, orderBy: { createdAt: "asc" } }),
+      ...userWrites(prisma),
+    },
     businesses: readRepository({ delegate: db.business!, map: mapBusiness, orderBy: { name: "asc" } }),
     suppliers: readRepository({ delegate: db.supplier!, map: mapSupplier, orderBy: { name: "asc" } }),
     products: {
@@ -379,6 +382,26 @@ function paymentWrites(prisma: PrismaClient): Pick<PaymentRepository, "transitio
         if (prismaCode(e) === "P2002") throw conflict("Bu tranzaksiya raqami allaqachon boshqa to'lov uchun ishlatilgan.");
         throw e;
       }
+    },
+  };
+}
+
+/** Foydalanuvchi holatini o'zgartirish (bloklash/faollashtirish): updateMany `status in from` va `role != excludeRole` sharti bilan, audit bilan bitta tranzaksiyada. */
+function userWrites(prisma: PrismaClient): Pick<UserRepository, "transitionStatus"> {
+  return {
+    async transitionStatus(input, hooks) {
+      return prisma.$transaction(async (tx: any) => {
+        const changed = await tx.user.updateMany({
+          where: { id: input.id, status: { in: input.from }, role: { not: input.excludeRole } },
+          data: { status: input.to },
+        });
+        if (changed.count !== 1) return null;
+        const row = await tx.user.findUnique({ where: { id: input.id } });
+        if (!row) return null;
+        const user = mapUser(row);
+        await tx.auditLog.create({ data: auditData(hooks.audit(user)) });
+        return user;
+      });
     },
   };
 }
