@@ -86,7 +86,7 @@ describe("/api/orders (yaratish, harakatlar, o'qish)", () => {
   });
   test("harakat: noto'g'ri body 400 (sababsiz rad, noma'lum harakat, noto'g'ri uuid)", async () => {
     assert.equal((await call("POST", `/api/orders/${orderId}/items/${itemA}`, "supA", { action: "reject" })).statusCode, 400);
-    assert.equal((await call("POST", `/api/orders/${orderId}/items/${itemA}`, "supA", { action: "deliver" })).statusCode, 400);
+    assert.equal((await call("POST", `/api/orders/${orderId}/items/${itemA}`, "supA", { action: "refund" })).statusCode, 400);
     assert.equal((await call("POST", `/api/orders/${orderId}/items/zzz`, "supA", { action: "accept" })).statusCode, 400);
   });
   test("harakat: huquq 403 (biznes accept, supplier cancel, admin)", async () => {
