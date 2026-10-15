@@ -36,7 +36,8 @@
         return client.post("/api/auth/telegram", { body: { initData: initData }, noAuth: true }).then(storeSession);
       },
       /**
-       * Ro'yxatdan o'tish: payload = { role: "business"|"supplier", name, phone, email?, organization: {...} }.
+       * Ro'yxatdan o'tish: payload = { role: "business"|"supplier", name, phone, email?, organization: {...}, acceptTerms: true }.
+       * acceptTerms majburiy (faqat true): foydalanish shartlariga rozilik. Vaqt va versiya serverda yoziladi.
        * initData avtomatik qo'shiladi. Kimlik va holat serverda belgilanadi. Muvaffaqiyatda token saqlanadi (kirgan hisoblanadi).
        */
       register: function (payload) {

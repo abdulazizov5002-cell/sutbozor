@@ -74,7 +74,7 @@ PostgreSQL (Neon)
   | `GET /api/health` | ishlaydi (o'ralmagan `{status, service}`, bazani tekshirmaydi) |
   | `GET /api/ready` | Monitoring uchun: server + baza (`SELECT 1`, 3 s timeout). Baza tirik -> 200 `{status:"ok", service, database:"ok"}`; baza o'lik/sekin -> 503 `database:"down"`; baza ulanmagan -> 503 `not_configured`. Xato matni/ulanish ma'lumoti javobga chiqmaydi. `/api/health` bazani tekshirmaydi (faqat server tirikmi). Qo'llanma: `backend/docs/MONITORING.md` |
   | `GET /api` | modullar ro'yxati |
-  | `POST /api/auth/telegram`, `POST /api/auth/register`, `GET /api/auth/me` | ishlaydi (register: rol faqat business\|supplier, holat serverdan, telefon majburiy, email ixtiyoriy) |
+  | `POST /api/auth/telegram`, `POST /api/auth/register`, `GET /api/auth/me` | ishlaydi (register: rol faqat business\|supplier, holat serverdan, telefon majburiy, email ixtiyoriy, `acceptTerms: true` majburiy: rozilik vaqti `users.termsAcceptedAt` va versiya `users.termsVersion` serverda yoziladi, versiya `TERMS_VERSION` konstantasi; shartlar sahifasi `terms.html`) |
   | `GET /api/{users,businesses,suppliers,orders,contracts,payments,disputes,notifications}` va `/:id` | faqat o'qish, auth + permission + egalik |
   | `GET /api/products`, `/:id` | biznes bozorni, supplier o'zinikini ko'radi |
   | `POST /api/orders` | faqat business (`orders.create`): supplierlarni o'zi tanlaydi (`items: [{supplierId, quantityPerDay}]`); narx serverda supplier mahsulotidan olinadi (snapshot), miqdor kunlik hajmdan oshmaydi, faqat faol supplier; `SB-<n>` raqam; buyurtma + audit + bildirishnoma bitta tranzaksiyada |
@@ -95,7 +95,7 @@ PostgreSQL (Neon)
 - Xavfsizlik: Helmet, CORS ro'yxati, rate limit (global 100/min, auth 10/min, write 30/min), body limit, `Cache-Control: no-store`,
   log'dan parol/token/initData/sir/to'lov rekvizitlari tozalanadi (`src/logging`).
 - Baza: `prisma/schema.prisma` (User, Business, Supplier, Product, Order, OrderItem, Contract, Payment, Dispute, Notification, AuditLog, Rating, Sequence, TelegramAccount).
-  Migratsiyalar: `20261015120000_order_item_last_delivered` (`order_items.lastDeliveredOn`), `20261015000000_user_email_optional`, `prisma/migrations/20261011000000_init/migration.sql` (ichida `constraints.sql` dagi CHECK'lar: 0% komissiya
+  Migratsiyalar: `20261015200000_user_terms_consent` (`users.termsAcceptedAt`, `users.termsVersion`), `20261015120000_order_item_last_delivered` (`order_items.lastDeliveredOn`), `20261015000000_user_email_optional`, `prisma/migrations/20261011000000_init/migration.sql` (ichida `constraints.sql` dagi CHECK'lar: 0% komissiya
   `platformCommission = 0 AND grossAmount = amount`, manfiy qiymat taqiqi, `users_role_link`, audit_logs faqat qo'shiladi).
   Pul ustunlari `BigInt`; `BigInt <-> number` aylantirish **faqat** `src/repositories/prisma/mappers.ts` da (2^53-1 dan katta qiymat xato).
 - Birinchi admin qo'lda SQL bilan yaratiladi: `backend/docs/ADMIN_BOOTSTRAP.md`.

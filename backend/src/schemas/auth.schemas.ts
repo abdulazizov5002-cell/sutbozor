@@ -25,6 +25,8 @@ const registerCommon = {
   name: personName,
   phone,
   email: optionalEmail,
+  /** Foydalanish shartlariga rozilik: faqat `true` qabul qilinadi (false/yo'q -> 400). Versiyani mijoz belgilamaydi. */
+  acceptTerms: z.literal(true, { errorMap: () => ({ message: "Davom etish uchun foydalanish shartlariga rozilik bering." }) }),
 };
 
 /**

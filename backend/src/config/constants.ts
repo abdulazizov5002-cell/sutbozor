@@ -29,6 +29,9 @@ export type UserStatus = (typeof USER_STATUSES)[number];
  */
 export const REGISTRATION_INITIAL_STATUS: UserStatus = "ACTIVE";
 
+/** Foydalanish shartlari versiyasi (terms.html bilan mos). Shartlar o'zgarganda oshiriladi; mijozdan olinmaydi, serverda belgilanadi. */
+export const TERMS_VERSION = "1";
+
 export const PERMISSIONS = {
   admin: [
     "dashboard.view", "orders.view", "payments.view", "payments.manage", "contracts.view", "contracts.manage",

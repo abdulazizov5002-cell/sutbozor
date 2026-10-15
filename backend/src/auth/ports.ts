@@ -61,6 +61,8 @@ interface RegistrationCommon {
   phone: string;
   email: string | null;
   status: UserStatus;
+  /** Rozi bo'lingan shartlar versiyasi (serverdan). Rozilik vaqti omborda server soati bilan yoziladi. */
+  termsVersion: string;
 }
 
 export type NewRegistration = RegistrationCommon &

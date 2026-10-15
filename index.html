@@ -702,7 +702,7 @@ ${b?`<label>Turi<select data-f="type">${REG_TYPES.map(t=>`<option${t===F.type?" 
     if(!F.terms){msg="Davom etish uchun foydalanish shartlariga rozilik bering.";draw();return}
     const organization=b?{name:g("org"),type:F.type,area:g("area"),address:g("address")}:{name:g("org"),area:g("area"),deliveryRadiusKm:Number(g("radius"))};
     if(!b&&!Number.isInteger(organization.deliveryRadiusKm)){msg="Yetkazish radiusini butun son (km) bilan kiriting.";draw();return}
-    const payload={role,name:g("name"),phone:g("phone"),organization};if(g("email"))payload.email=g("email");
+    const payload={role,name:g("name"),phone:g("phone"),organization,acceptTerms:true};if(g("email"))payload.email=g("email");
     busy=true;msg="";draw();
     api.auth.register(payload).then(u=>{srvUser(api,srv,u);box.innerHTML=`<div class="card"><h2>Ro'yxatdan o'tdingiz</h2><p class="hint">Hisobingiz yaratildi. Hozircha ilovaning asosiy bo'limlari demo ma'lumot bilan ishlaydi, haqiqiy buyurtmalar keyingi bosqichlarda ulanadi.</p></div>`})
     .catch(e=>{busy=false;msg=e&&e.message?e.message:"Xato yuz berdi.";if(e&&e.code==="CONFLICT"&&/allaqachon ro'yxatdan o'tgansiz/.test(e.message||""))msg+=" Sahifani qayta oching.";draw()})};
