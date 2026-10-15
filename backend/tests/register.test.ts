@@ -4,6 +4,7 @@ import { createJwtTokenService } from "../src/auth/jwt";
 import type { NewRegistration, RegistrationStore, TelegramAccountStore } from "../src/auth/ports";
 import { createTelegramVerifier } from "../src/auth/telegram/verifier";
 import { createAuthController } from "../src/controllers/auth.controller";
+import { TERMS_VERSION } from "../src/config/constants";
 import type { TelegramAccount, User } from "../src/domain/entities";
 import { createPrismaRegistrationStore } from "../src/repositories/prisma/registration";
 import { registerBody } from "../src/schemas/auth.schemas";
@@ -31,11 +32,11 @@ const verifier = createTelegramVerifier({ botToken: BOT, maxAgeSec: 3600, now: (
 const jwt = createJwtTokenService({ secret: SECRET, ttlSec: 900, now: () => NOW });
 
 const bizBody = (over: Record<string, unknown> = {}) => ({
-  initData: fresh(111), role: "business", name: "Ali Valiyev", phone: "+998 90 123-45-67",
+  initData: fresh(111), role: "business", name: "Ali Valiyev", phone: "+998 90 123-45-67", acceptTerms: true,
   organization: { name: "Nur kafe", type: "Kafe", area: "Navbahor", address: "Navoiy ko'chasi 5" }, ...over,
 });
 const supBody = (over: Record<string, unknown> = {}) => ({
-  initData: fresh(222), role: "supplier", name: "Vali Aliyev", phone: "+998901234568", email: "Vali@Mail.UZ",
+  initData: fresh(222), role: "supplier", name: "Vali Aliyev", phone: "+998901234568", email: "Vali@Mail.UZ", acceptTerms: true,
   organization: { name: "Aliyevlar xo'jaligi", area: "Do'stlik", deliveryRadiusKm: 5 }, ...over,
 });
 
@@ -51,6 +52,17 @@ const supBody = (over: Record<string, unknown> = {}) => ({
     assert.ok(r.success); if (r.success) assert.equal(r.data.email, "vali@mail.uz");
     const e = registerBody.safeParse(supBody({ email: "" }));
     assert.ok(e.success); if (e.success) assert.equal(e.data.email, undefined);
+  });
+  await t("sxema: acceptTerms majburiy va faqat true (yo'q/false/'true'/1 -> 400)", () => {
+    assert.equal(registerBody.safeParse(bizBody({ acceptTerms: undefined })).success, false);
+    for (const v of [false, "true", 1, null]) assert.equal(registerBody.safeParse(bizBody({ acceptTerms: v })).success, false, String(v));
+    assert.equal(registerBody.safeParse(supBody({ acceptTerms: false })).success, false);
+    const e = registerBody.safeParse(bizBody({ acceptTerms: false }));
+    assert.ok(!e.success && /shartlariga rozilik/.test(e.error.issues[0]!.message));
+  });
+  await t("sxema: termsVersion/termsAcceptedAt mijozdan qabul qilinmaydi", () => {
+    assert.equal(registerBody.safeParse(bizBody({ termsVersion: "99" })).success, false);
+    assert.equal(registerBody.safeParse(bizBody({ termsAcceptedAt: "2020-01-01T00:00:00Z" })).success, false);
   });
   await t("sxema: role=admin rad etiladi", () => {
     assert.equal(registerBody.safeParse(bizBody({ role: "admin" })).success, false);
@@ -157,6 +169,11 @@ const supBody = (over: Record<string, unknown> = {}) => ({
     const c = createAuthController({ telegramVerifier: verifier, registrations: regStore(), tokens: jwt });
     assert.equal(await errOf(() => reg(c, bizBody())), "NOT_IMPLEMENTED:501");
   });
+  await t("register: shartlar versiyasi serverdan (TERMS_VERSION) omborga uzatiladi", async () => {
+    const { ctl, store } = mk(accounts(), regStore());
+    await reg(ctl, bizBody());
+    assert.equal(store.calls[0]!.termsVersion, TERMS_VERSION);
+  });
   await t("register: PENDING rejimida token berilmaydi (403), lekin hisob yaratiladi", async () => {
     const { ctl, store } = mk(accounts(), regStore(), { registrationStatus: "PENDING" });
     assert.equal(await errOf(() => reg(ctl, bizBody())), "FORBIDDEN:403");
@@ -185,14 +202,21 @@ const supBody = (over: Record<string, unknown> = {}) => ({
     return { store: createPrismaRegistrationStore(prisma as never), ops, data, rolled: () => rolledBack };
   };
   const bizReg: NewRegistration = {
-    telegramAccountId: "acc-1", name: "Ali", phone: "+998901234567", email: null, status: "ACTIVE", role: "business",
+    telegramAccountId: "acc-1", name: "Ali", phone: "+998901234567", email: null, status: "ACTIVE", termsVersion: "1", role: "business",
     organization: { name: "Nur", type: "Kafe", area: "A", address: "B" },
   };
   const supReg: NewRegistration = {
-    telegramAccountId: "acc-2", name: "Vali", phone: "+998901234568", email: "v@m.uz", status: "ACTIVE", role: "supplier",
+    telegramAccountId: "acc-2", name: "Vali", phone: "+998901234568", email: "v@m.uz", status: "ACTIVE", termsVersion: "1", role: "supplier",
     organization: { name: "Xo'jalik", area: "A", deliveryRadiusKm: 5 },
   };
 
+  await t("ombor: rozilik vaqti (server soati) va versiya user va audit'ga yoziladi", async () => {
+    const before = Date.now(); const f = fakePrisma(); await f.store.register(bizReg); const after = Date.now();
+    assert.equal(f.data.user.termsVersion, "1");
+    assert.ok(f.data.user.termsAcceptedAt instanceof Date);
+    const ts = f.data.user.termsAcceptedAt.getTime(); assert.ok(ts >= before && ts <= after);
+    assert.match(f.data.audit.description, /shartlar v1/);
+  });
   await t("ombor: business tartibi: tashkilot -> user -> bog'lash -> audit, businessId bog'lanadi", async () => {
     const f = fakePrisma(); const u = await f.store.register(bizReg);
     assert.deepEqual(f.ops, ["business.create", "user.create", "tg.link", "audit.create"]);

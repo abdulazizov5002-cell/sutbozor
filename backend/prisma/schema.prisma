@@ -116,6 +116,9 @@ model User {
   telegram      TelegramAccount?
   createdAt     DateTime       @default(now())
   lastLoginAt   DateTime?
+  /// Foydalanish shartlariga rozilik (ro'yxatdan o'tishda, server soati). Eski foydalanuvchilarda NULL.
+  termsAcceptedAt DateTime?
+  termsVersion    String?
 
   @@index([businessId])
   @@index([supplierId])

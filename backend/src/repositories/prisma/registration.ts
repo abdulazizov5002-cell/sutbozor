@@ -25,7 +25,10 @@ export function createPrismaRegistrationStore(prisma: PrismaClient): Registratio
               : { supplierId: (await tx.supplier.create({ data: input.organization, select: { id: true } })).id };
 
           const user = await tx.user.create({
-            data: { name: input.name, phone: input.phone, email: input.email, role: input.role, status: input.status, ...orgIds },
+            data: {
+              name: input.name, phone: input.phone, email: input.email, role: input.role, status: input.status, ...orgIds,
+              termsAcceptedAt: new Date(), termsVersion: input.termsVersion,
+            },
           });
 
           const linked = await tx.telegramAccount.updateMany({
@@ -42,7 +45,7 @@ export function createPrismaRegistrationStore(prisma: PrismaClient): Registratio
               action: "auth.register",
               objectType: "user",
               objectId: user.id,
-              description: `Ro'yxatdan o'tdi (${input.role}), holat: ${input.status}`,
+              description: `Ro'yxatdan o'tdi (${input.role}), holat: ${input.status}, shartlar v${input.termsVersion}`,
             },
           });
           return mapUser(user);

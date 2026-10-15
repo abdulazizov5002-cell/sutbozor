@@ -4,7 +4,7 @@ import type { LoginResponse, MeResponse } from "../auth/contract";
 import type { RegistrationStore, TelegramAccountStore, TelegramVerifier, TokenService, UserLookup } from "../auth/ports";
 import { parseInitData } from "../auth/telegram/initData";
 import { actorOf } from "../middleware/auth";
-import { REGISTRATION_INITIAL_STATUS, type UserStatus } from "../config/constants";
+import { REGISTRATION_INITIAL_STATUS, TERMS_VERSION, type UserStatus } from "../config/constants";
 import type { RegisterBody, TelegramLoginBody } from "../schemas/auth.schemas";
 import { permissionsOf } from "../services/permission.service";
 import { AppError, AuthenticationError, conflict, ERROR_CODES, forbidden, notImplemented } from "../utils/errors";
@@ -108,6 +108,7 @@ export function createAuthController(deps: AuthControllerDeps) {
         phone: body.phone,
         email: body.email ?? null,
         status: deps.registrationStatus ?? REGISTRATION_INITIAL_STATUS,
+        termsVersion: TERMS_VERSION,
       };
       const user = await registrations.register(
         body.role === "business"
