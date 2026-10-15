@@ -1,9 +1,9 @@
 import type { PrismaClient } from "@prisma/client";
 import { conflict } from "../../utils/errors";
 import type { NewAuditLog } from "../../domain/entities";
-import type { ListParams, Page, ProductRepository, ReadRepository, Repositories, Scope } from "../ports";
+import type { ListParams, NewNotification, OrderRepository, Page, ProductRepository, ReadRepository, Repositories, Recipient, Scope } from "../ports";
 import {
-  mapAuditLog, mapBusiness, mapContract, mapDispute, mapNotification, mapOrder, mapPayment, mapProduct, mapSupplier, mapUser, toBigInt,
+  mapAuditLog, mapBusiness, mapContract, mapDispute, mapNotification, mapOrder, mapPayment, mapProduct, mapSupplier, mapUser, money, toBigInt,
 } from "./mappers";
 
 /** Prisma delegate'ining bizga kerak qismi (strukturaviy tur, har qanday model delegate'i mos keladi). */
@@ -61,13 +61,16 @@ export function createPrismaRepositories(prisma: PrismaClient): Repositories {
       }),
       ...productWrites(prisma),
     },
-    orders: readRepository({
-      delegate: db.order!, map: mapOrder, include: { items: true }, orderBy: { createdAt: "desc" },
-      where: (s) => ({
-        ...(s.businessId ? { businessId: s.businessId } : {}),
-        ...(s.supplierId ? { items: { some: { supplierId: s.supplierId } } } : {}),
+    orders: {
+      ...readRepository({
+        delegate: db.order!, map: mapOrder, include: { items: true }, orderBy: { createdAt: "desc" },
+        where: (s) => ({
+          ...(s.businessId ? { businessId: s.businessId } : {}),
+          ...(s.supplierId ? { items: { some: { supplierId: s.supplierId } } } : {}),
+        }),
       }),
-    }),
+      ...orderWrites(prisma),
+    },
     contracts: readRepository({ delegate: db.contract!, map: mapContract, orderBy: { createdAt: "desc" }, where: party }),
     payments: {
       ...readRepository({ delegate: db.payment!, map: mapPayment, orderBy: { dueDate: "asc" }, where: party }),
@@ -160,6 +163,94 @@ function productWrites(prisma: PrismaClient): Pick<ProductRepository, "create" |
         if (prismaCode(e) === "P2025") return null;
         throw e;
       }
+    },
+  };
+}
+
+/** Bildirishnoma oluvchilar: faqat FAOL foydalanuvchilar (bloklanganlarga yuborilmaydi). */
+const recipientWhere = (r: Recipient) => ({
+  status: "ACTIVE" as const,
+  ...(r.businessId ? { businessId: r.businessId } : {}),
+  ...(r.supplierId ? { supplierId: r.supplierId } : {}),
+});
+
+/** Tranzaksiya ichida: oluvchilarga bildirishnoma qatorlari. */
+async function notifyUsers(tx: any, where: ReturnType<typeof recipientWhere>, content: NewNotification): Promise<void> {
+  const users: { id: string }[] = await tx.user.findMany({ where, select: { id: true } });
+  if (users.length === 0) return;
+  await tx.notification.createMany({
+    data: users.map((u) => ({ userId: u.id, type: content.type, title: content.title, message: content.message })),
+  });
+}
+
+/**
+ * Buyurtma yozish amallari. Buyurtma, qismlar, SB-<n> raqami, audit va bildirishnomalar BITTA tranzaksiyada:
+ * biri xato bersa hech biri saqlanmaydi. Qism holati faqat SENT dan o'tadi (updateMany sharti): poyga holatida ikki marta o'tmaydi.
+ */
+function orderWrites(prisma: PrismaClient): Pick<OrderRepository, "findOfferings" | "create" | "transitionItem"> {
+  const db = prisma as any;
+  return {
+    async findOfferings(supplierIds, product) {
+      const rows: { supplierId: string; pricePerUnit: bigint; dailyCapacity: unknown }[] = await db.product.findMany({
+        where: { name: product, supplierId: { in: supplierIds }, supplier: { users: { some: { status: "ACTIVE" } } } },
+        select: { supplierId: true, pricePerUnit: true, dailyCapacity: true },
+      });
+      return rows.map((r) => ({ supplierId: r.supplierId, pricePerUnit: money(r.pricePerUnit), dailyCapacity: Number(r.dailyCapacity) }));
+    },
+    async create(input, hooks) {
+      // SB-<n> ketma-ketligi: birinchi yaratishda ikki so'rov to'qnashsa P2002 bo'ladi, shunda qayta uriniladi.
+      for (let attempt = 0; ; attempt++) {
+        try {
+          return await prisma.$transaction(async (tx) => {
+            const seq = await tx.sequence.upsert({
+              where: { name: "order" }, create: { name: "order", value: 1001 }, update: { value: { increment: 1 } },
+            });
+            const row = await tx.order.create({
+              data: {
+                publicId: `SB-${seq.value}`, businessId: input.businessId, product: input.product,
+                quantityPerDay: input.quantityPerDay, days: input.days, deliveryMode: input.deliveryMode,
+                paymentSchedule: input.paymentSchedule, prepTime: input.prepTime,
+                items: {
+                  create: input.items.map((i) => ({
+                    supplierId: i.supplierId, quantityPerDay: i.quantityPerDay, pricePerUnit: toBigInt(i.pricePerUnit),
+                  })),
+                },
+              },
+              include: { items: true },
+            });
+            const order = mapOrder(row);
+            await tx.auditLog.create({ data: auditData(hooks.audit(order)) });
+            const supplierIds = [...new Set(order.items.map((i) => i.supplierId))];
+            for (const supplierId of supplierIds) await notifyUsers(tx, recipientWhere({ supplierId }), hooks.notify(order));
+            return order;
+          });
+        } catch (e) {
+          if (prismaCode(e) === "P2002") {
+            if (attempt < 2) continue;
+            throw conflict("Buyurtma raqamini berib bo'lmadi. Qayta urinib ko'ring.");
+          }
+          throw e;
+        }
+      }
+    },
+    async transitionItem(input, hooks) {
+      return prisma.$transaction(async (tx) => {
+        const changed = await tx.orderItem.updateMany({
+          where: {
+            id: input.itemId, orderId: input.orderId, status: "SENT",
+            ...(input.supplierId ? { supplierId: input.supplierId } : {}),
+            ...(input.businessId ? { order: { businessId: input.businessId } } : {}),
+          },
+          data: { status: input.to },
+        });
+        if (changed.count !== 1) return null;
+        const row = await tx.order.findUnique({ where: { id: input.orderId }, include: { items: true } });
+        if (!row) return null;
+        const order = mapOrder(row);
+        await tx.auditLog.create({ data: auditData(hooks.audit(order)) });
+        await notifyUsers(tx, recipientWhere(hooks.recipient), hooks.notify(order));
+        return order;
+      });
     },
   };
 }

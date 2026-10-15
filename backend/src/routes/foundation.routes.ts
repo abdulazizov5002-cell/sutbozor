@@ -7,6 +7,7 @@ import { registerBody, telegramLoginBody } from "../schemas/auth.schemas";
 import { policies, routeLimit } from "../security/rateLimit";
 import { validate } from "../validation/validate";
 import { entityRoutes } from "./entity.routes";
+import { orderRoutes } from "./orders.routes";
 import { productRoutes } from "./products.routes";
 
 /** Entity'siz modul (auth, admin): hozircha GET / faqat 501 NOT_IMPLEMENTED qaytaradi. */
@@ -28,7 +29,7 @@ export const foundationRoutes =
       businesses: entityRoutes(c.controllers.businesses),
       suppliers: entityRoutes(c.controllers.suppliers),
       products: productRoutes(c.controllers.products),
-      orders: entityRoutes(c.controllers.orders),
+      orders: orderRoutes(c.controllers.orders),
       contracts: entityRoutes(c.controllers.contracts),
       payments: entityRoutes(c.controllers.payments),
       disputes: entityRoutes(c.controllers.disputes),

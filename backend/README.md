@@ -138,6 +138,7 @@ Barcha yo'llar `/api` prefiksi bilan. Qatlamlar: `route -> controller -> service
 | `GET /api/health` | ishlaydi |
 | `GET /api` | modullar ro'yxati |
 | `POST /api/products`, `PATCH /api/products/:id`, `DELETE /api/products/:id` | ishlaydi: faqat supplier (`products.manage`) va faqat o'z mahsuloti (begonasi `404`). `supplierId` tokendan, birlik (L/kg) nomdan olinadi, narx musbat butun so'm. Har yozish audit yozuvi bilan bitta tranzaksiyada. Takror (supplier, nom) `409`. Mahsulot nomini o'zgartirib bo'lmaydi |
+| `POST /api/orders`, `POST /api/orders/:id/items/:itemId` | ishlaydi (D bosqichi): business supplierlarni o'zi tanlab buyurtma beradi, narx serverda supplier mahsulotidan olinadi, miqdor kunlik hajmdan oshmaydi, `SB-<n>` raqam `sequences` jadvalidan. Supplier o'z qismini `accept`/`reject`, business SENT qismini `cancel` qiladi (faqat SENT holatida, aks holda `409`; begona `404`). Audit va bildirishnoma bitta tranzaksiyada. Shartnoma, yetkazish va to'lov keyingi bosqichlarda |
 | `GET /api/{users,suppliers,businesses,products,orders,contracts,payments,disputes,notifications}` va `/:id` | ulangan: autentifikatsiya + permission + egalik. token yo'q yoki yaroqsiz bo'lsa `401`; `JWT_SECRET` sozlanmagan bo'lsa `501 AUTH_NOT_CONFIGURED`; baza yo'q bo'lsa `501 NOT_IMPLEMENTED` |
 | `GET /api/admin/audit-logs` | faqat `ADMIN` roli + `audit.view` |
 | `GET /api/auth/me` | autentifikatsiya strategiyasi ulangach ishlaydi |
