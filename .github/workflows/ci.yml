@@ -1,0 +1,45 @@
+# Backend CI: har Pull Request'da backend/ tekshiriladi (o'rnatish, Prisma Client, typecheck, build, testlar).
+# Sir kerak emas: testlar bazasiz va tarmoqsiz ishlaydi. Deploy qilmaydi (Render main'dan o'zi deploy qiladi).
+name: CI
+
+on:
+  pull_request:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+jobs:
+  backend:
+    name: Backend (typecheck, build, test)
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    defaults:
+      run:
+        working-directory: backend
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: backend/package-lock.json
+
+      - name: npm ci
+        run: npm ci
+
+      - name: Prisma Client
+        run: npx prisma generate
+
+      - name: Typecheck
+        run: npm run typecheck
+
+      - name: Build
+        run: npm run build
+
+      - name: Test
+        run: npm test
