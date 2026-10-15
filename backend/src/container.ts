@@ -29,6 +29,8 @@ export interface ContainerOptions {
   registrations?: RegistrationStore;
   /** Cron sirri (CRON_SECRET). Berilmasa /api/internal/* 501. */
   cronSecret?: string;
+  /** Bazaga yengil so'rov (SELECT 1): /api/ready uchun. Berilmasa /api/ready 503. */
+  readinessCheck?: () => Promise<void>;
 }
 
 export function buildContainer(repositories: Repositories = notImplementedRepositories(), options: ContainerOptions = {}) {
@@ -54,7 +56,7 @@ export function buildContainer(repositories: Repositories = notImplementedReposi
       registrations: options.registrations,
     }),
   };
-  return { services, controllers };
+  return { services, controllers, readinessCheck: options.readinessCheck };
 }
 
 export type Container = ReturnType<typeof buildContainer>;

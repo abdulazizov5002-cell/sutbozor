@@ -42,6 +42,7 @@ async function main(): Promise<void> {
     ...(tokens ? { tokens } : {}),
     ...(registrations ? { registrations } : {}),
     ...(env.CRON_SECRET ? { cronSecret: env.CRON_SECRET } : {}),
+    ...(repositories ? { readinessCheck: async () => { await getPrisma().$queryRaw`SELECT 1`; } } : {}),
   });
   warn = (o, m) => app.log.warn(o, m);
   app.log.info({ telegramNotifications: Boolean(delivery) }, "bildirishnoma kanallari");

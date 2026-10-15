@@ -1,6 +1,10 @@
 import type { FastifyPluginAsync } from "fastify";
-import { healthController } from "../controllers/health.controller";
+import { healthController, readyController } from "../controllers/health.controller";
 
-export const healthRoutes: FastifyPluginAsync = async (app) => {
-  app.get("/health", healthController.get);
-};
+/** /api/health: server tirik. /api/ready: server + baza (monitoring uchun, `ping` berilmasa 503). */
+export const healthRoutes =
+  (ping?: () => Promise<void>): FastifyPluginAsync =>
+  async (app) => {
+    app.get("/health", healthController.get);
+    app.get("/ready", readyController(ping).get);
+  };

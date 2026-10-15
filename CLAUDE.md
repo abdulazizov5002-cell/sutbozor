@@ -72,6 +72,7 @@ PostgreSQL (Neon)
   | Yo'l | Holat |
   |---|---|
   | `GET /api/health` | ishlaydi (o'ralmagan `{status, service}`, bazani tekshirmaydi) |
+  | `GET /api/ready` | Monitoring uchun: server + baza (`SELECT 1`, 3 s timeout). Baza tirik -> 200 `{status:"ok", service, database:"ok"}`; baza o'lik/sekin -> 503 `database:"down"`; baza ulanmagan -> 503 `not_configured`. Xato matni/ulanish ma'lumoti javobga chiqmaydi. `/api/health` bazani tekshirmaydi (faqat server tirikmi). Qo'llanma: `backend/docs/MONITORING.md` |
   | `GET /api` | modullar ro'yxati |
   | `POST /api/auth/telegram`, `POST /api/auth/register`, `GET /api/auth/me` | ishlaydi (register: rol faqat business\|supplier, holat serverdan, telefon majburiy, email ixtiyoriy) |
   | `GET /api/{users,businesses,suppliers,orders,contracts,payments,disputes,notifications}` va `/:id` | faqat o'qish, auth + permission + egalik |
@@ -98,7 +99,7 @@ PostgreSQL (Neon)
   `platformCommission = 0 AND grossAmount = amount`, manfiy qiymat taqiqi, `users_role_link`, audit_logs faqat qo'shiladi).
   Pul ustunlari `BigInt`; `BigInt <-> number` aylantirish **faqat** `src/repositories/prisma/mappers.ts` da (2^53-1 dan katta qiymat xato).
 - Birinchi admin qo'lda SQL bilan yaratiladi: `backend/docs/ADMIN_BOOTSTRAP.md`.
-- Zaxira nusxa va tiklash (Neon oynasi, snapshot branch, tiklash mashqi): `backend/docs/BACKUP.md`.
+- Zaxira nusxa va tiklash (Neon oynasi, snapshot branch, tiklash mashqi): `backend/docs/BACKUP.md`. Monitoring (UptimeRobot, `/api/health` va `/api/ready`): `backend/docs/MONITORING.md`.
 
 ### Sirlar va muhit
 - Render env'da: `DATABASE_URL`, `JWT_SECRET` (>= 32 belgi), `TELEGRAM_BOT_TOKEN`, `TELEGRAM_NOTIFICATIONS` (ixtiyoriy, `true` bilan yoqiladi), `CRON_SECRET` (ixtiyoriy, cron uchun; GitHub Secrets'da ham bir xil qiymat), `CORS_ORIGIN`, `NODE_ENV=production`, `TRUST_PROXY` va boshqalar (`backend/.env.example` ro'yxati).

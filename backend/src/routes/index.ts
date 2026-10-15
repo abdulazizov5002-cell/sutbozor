@@ -8,7 +8,7 @@ import { healthRoutes } from "./health.routes";
 export const createApiRoutes =
   (container: Container): FastifyPluginAsync =>
   async (app) => {
-    await app.register(healthRoutes);
+    await app.register(healthRoutes(container.readinessCheck));
     await app.register(foundationRoutes(container));
     await app.register(internalRoutes(container.controllers.maintenance), { prefix: "/internal" });
   };
