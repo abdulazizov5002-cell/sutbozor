@@ -26,6 +26,11 @@ const schema = z
     JWT_SECRET: z.string().min(32, "JWT_SECRET kamida 32 belgi bo'lishi kerak.").optional(),
     ACCESS_TOKEN_TTL_MIN: z.coerce.number().int().min(1).max(1440).default(15),
     TELEGRAM_BOT_TOKEN: z.string().min(20, "TELEGRAM_BOT_TOKEN juda qisqa.").optional(),
+    /** "true" bo'lsa yangi bildirishnomalar Telegram bot orqali ham yuboriladi (TELEGRAM_BOT_TOKEN va baza kerak). Standart: o'chiq. */
+    TELEGRAM_NOTIFICATIONS: z
+      .enum(["true", "false"])
+      .default("false")
+      .transform((v) => v === "true"),
     /** initData necha soniya yangi hisoblanadi (auth_date bo'yicha). Eskirgan ma'lumot qayta ishlatilishidan himoya. */
     TELEGRAM_INIT_DATA_MAX_AGE_SEC: z.coerce.number().int().min(60).max(604_800).default(86_400),
     TRUST_PROXY: z
@@ -34,6 +39,9 @@ const schema = z
       .transform((v) => v === "true"),
   })
   .superRefine((value, ctx) => {
+    if (value.TELEGRAM_NOTIFICATIONS && (!value.TELEGRAM_BOT_TOKEN || !value.DATABASE_URL)) {
+      ctx.addIssue({ code: z.ZodIssueCode.custom, path: ["TELEGRAM_NOTIFICATIONS"], message: "TELEGRAM_NOTIFICATIONS=true uchun TELEGRAM_BOT_TOKEN va DATABASE_URL kerak." });
+    }
     if (value.NODE_ENV === "production" && !value.DATABASE_URL) {
       ctx.addIssue({ code: z.ZodIssueCode.custom, path: ["DATABASE_URL"], message: "Productionda DATABASE_URL majburiy." });
     }
