@@ -115,7 +115,12 @@ describe("/api/orders (yaratish, harakatlar, o'qish)", () => {
     assert.equal((await call("POST", url, "biz", { action: "prepare" })).statusCode, 403);
     for (const a of ["prepare", "ready", "depart"]) assert.equal((await call("POST", url, "supA", { action: a })).statusCode, 200, a);
     const done = await call("POST", url, "supA", { action: "deliver" });
-    assert.equal(done.statusCode, 200); assert.equal(json(done).data.items[0].daysDelivered, 1);
+    assert.equal(done.statusCode, 200); assert.equal(json(done).data.items[0].daysDelivered, 0); // xaridor tasdig'igacha kun hisoblanmaydi
+    assert.equal((await call("POST", url, "supA", { action: "receive" })).statusCode, 403); // supplier o'zi tasdiqlay olmaydi
+    assert.equal((await call("POST", url, "biz2", { action: "receive" })).statusCode, 404);
+    const got = await call("POST", url, "biz", { action: "receive" });
+    assert.equal(got.statusCode, 200); assert.equal(json(got).data.items[0].daysDelivered, 1);
+    assert.equal((await call("POST", url, "biz", { action: "receive" })).statusCode, 409);
     for (const a of ["prepare", "ready", "depart"]) assert.equal((await call("POST", url, "supA", { action: a })).statusCode, 200, a);
     assert.equal((await call("POST", url, "supA", { action: "deliver" })).statusCode, 409); // bugun allaqachon yetkazilgan
     assert.equal((await call("POST", url, "supA", { action: "pause" })).statusCode, 400); // sababsiz

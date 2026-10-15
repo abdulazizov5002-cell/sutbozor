@@ -50,16 +50,18 @@ export function fakeOrderRepo(seed: Order[] = [], offerings: (Offering & { produ
       if (input.from.deliveryStatus && it.deliveryStatus !== input.from.deliveryStatus) return null;
       if (input.supplierId && it.supplierId !== input.supplierId) return null;
       if (input.businessId && o.businessId !== input.businessId) return null;
-      if (input.delivery && it.lastDeliveredOn && it.lastDeliveredOn >= input.delivery.today) return null;
+      const stage = input.delivery?.stage;
+      const marks = stage === "mark" || stage === "both";
+      if (marks && it.lastDeliveredOn && it.lastDeliveredOn >= input.delivery!.today) return null;
       let completes = false;
-      if (input.delivery) {
-        it.daysDelivered += 1; it.lastDeliveredOn = input.delivery.today;
+      if (input.to.status) it.status = input.to.status;
+      if (input.to.deliveryStatus) it.deliveryStatus = input.to.deliveryStatus;
+      if (marks) it.lastDeliveredOn = input.delivery!.today;
+      if (stage === "confirm" || stage === "both") {
+        it.daysDelivered += 1;
         completes = it.daysDelivered >= o.days;
         if (completes) it.status = "COMPLETED";
         it.deliveryStatus = completes ? "DELIVERED" : "SCHEDULED";
-      } else {
-        if (input.to.status) it.status = input.to.status;
-        if (input.to.deliveryStatus) it.deliveryStatus = input.to.deliveryStatus;
       }
       if (input.contract) {
         const c = { publicId: `CT-${1001 + contracts.length}`, orderId: o.id, supplierId: it.supplierId, status: "ACTIVE", ...input.contract };

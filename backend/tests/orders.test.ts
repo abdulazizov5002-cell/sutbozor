@@ -55,7 +55,7 @@ const place = async (w: ReturnType<typeof world>, input = body()) => createOrder
     assert.ok(orderItemActionBody.safeParse({ action: "reject", reason: "Sut qolmadi" }).success);
     assert.equal(orderItemActionBody.safeParse({ action: "cancel" }).success, false);
     assert.equal(orderItemActionBody.safeParse({ action: "refund" }).success, false);
-    for (const a of ["prepare", "ready", "depart", "deliver", "pickup", "resume"]) assert.ok(orderItemActionBody.safeParse({ action: a }).success, a);
+    for (const a of ["prepare", "ready", "depart", "deliver", "receive", "pickup", "resume"]) assert.ok(orderItemActionBody.safeParse({ action: a }).success, a);
     assert.equal(orderItemActionBody.safeParse({ action: "pause" }).success, false);
     assert.ok(orderItemActionBody.safeParse({ action: "pause", reason: "Sigir kasal" }).success);
     assert.equal(orderItemActionBody.safeParse({ action: "accept", status: "ACTIVE" }).success, false);
@@ -276,18 +276,29 @@ const place = async (w: ReturnType<typeof world>, input = body()) => createOrder
     await g.repo.transitionItem({ ...TR, from: { status: "PAUSED" }, to: { status: "ACTIVE" } }, rh);
     assert.deepEqual(g.seen.contractUpdate, { where: { id: "c1" }, data: { status: "ACTIVE" } });
   });
-  await t("prisma yetkazish: hisob +1, sana, bir kunda bir marta sharti, keyingi kun SCHEDULED", async () => {
+  await t("prisma deliver (mark): faqat sana + DELIVERED, kun hisoblanmaydi, bir kunda bir marta sharti", async () => {
     const f = fakePrisma({ days: 3, item: { daysDelivered: 1, deliveryStatus: "IN_TRANSIT", contractId: "c1" } });
-    await f.repo.transitionItem({ ...TR, from: { status: "ACTIVE", deliveryStatus: "IN_TRANSIT" }, to: {}, delivery: { today: "2026-10-16" } }, rh);
-    const w = f.seen.update.where;
-    assert.deepEqual(w.OR, [{ lastDeliveredOn: null }, { lastDeliveredOn: { lt: new Date("2026-10-16T00:00:00.000Z") } }]);
-    assert.equal(f.seen.update.data.daysDelivered, 2); assert.equal(f.seen.update.data.deliveryStatus, "SCHEDULED"); assert.equal(f.seen.update.data.status, "ACTIVE");
-    assert.equal(f.seen.update.data.lastDeliveredOn.toISOString(), "2026-10-16T00:00:00.000Z");
+    await f.repo.transitionItem({ ...TR, from: { status: "ACTIVE", deliveryStatus: "IN_TRANSIT" }, to: { deliveryStatus: "DELIVERED" }, delivery: { today: "2026-10-16", stage: "mark" } }, rh);
+    assert.deepEqual(f.seen.update.where.OR, [{ lastDeliveredOn: null }, { lastDeliveredOn: { lt: new Date("2026-10-16T00:00:00.000Z") } }]);
+    assert.deepEqual(Object.keys(f.seen.update.data).sort(), ["deliveryStatus", "lastDeliveredOn"]);
+    assert.equal(f.seen.update.data.deliveryStatus, "DELIVERED"); assert.equal(f.seen.update.data.lastDeliveredOn.toISOString(), "2026-10-16T00:00:00.000Z");
     assert.equal(f.ops.includes("contract.update"), false);
   });
-  await t("prisma yetkazish: oxirgi kun -> qism va shartnoma COMPLETED", async () => {
-    const f = fakePrisma({ days: 3, item: { daysDelivered: 2, deliveryStatus: "IN_TRANSIT", contractId: "c1" } });
-    await f.repo.transitionItem({ ...TR, from: { status: "ACTIVE", deliveryStatus: "IN_TRANSIT" }, to: {}, delivery: { today: "2026-10-17" } }, rh);
+  await t("prisma receive (confirm): +1 kun, kun sharti yo'q (sana allaqachon belgilangan), keyingi kun SCHEDULED", async () => {
+    const f = fakePrisma({ days: 3, item: { daysDelivered: 1, deliveryStatus: "DELIVERED", contractId: "c1" } });
+    await f.repo.transitionItem({ ...TR, from: { status: "ACTIVE", deliveryStatus: "DELIVERED" }, to: {}, delivery: { today: "2026-10-16", stage: "confirm" } }, rh);
+    assert.equal(f.seen.update.where.OR, undefined);
+    assert.equal(f.seen.update.data.daysDelivered, 2); assert.equal(f.seen.update.data.deliveryStatus, "SCHEDULED"); assert.equal(f.seen.update.data.status, "ACTIVE");
+    assert.equal(f.seen.update.data.lastDeliveredOn, undefined); assert.equal(f.ops.includes("contract.update"), false);
+  });
+  await t("prisma pickup (both): sana + kun hisobi, bir kunda bir marta sharti", async () => {
+    const f = fakePrisma({ days: 3, item: { daysDelivered: 0, deliveryStatus: "READY" } });
+    await f.repo.transitionItem({ orderId: "o1", itemId: "i0", businessId: "bC", from: { status: "ACTIVE", deliveryStatus: "READY" }, to: {}, delivery: { today: "2026-10-16", stage: "both" } }, { ...rh, recipient: { supplierId: SA } });
+    assert.ok(f.seen.update.where.OR); assert.equal(f.seen.update.data.daysDelivered, 1); assert.equal(f.seen.update.data.lastDeliveredOn.toISOString(), "2026-10-16T00:00:00.000Z");
+  });
+  await t("prisma receive: oxirgi kun -> qism va shartnoma COMPLETED", async () => {
+    const f = fakePrisma({ days: 3, item: { daysDelivered: 2, deliveryStatus: "DELIVERED", contractId: "c1" } });
+    await f.repo.transitionItem({ ...TR, from: { status: "ACTIVE", deliveryStatus: "DELIVERED" }, to: {}, delivery: { today: "2026-10-17", stage: "confirm" } }, rh);
     assert.equal(f.seen.update.data.daysDelivered, 3); assert.equal(f.seen.update.data.status, "COMPLETED"); assert.equal(f.seen.update.data.deliveryStatus, "DELIVERED");
     assert.deepEqual(f.seen.contractUpdate, { where: { id: "c1" }, data: { status: "COMPLETED" } });
   });
@@ -315,18 +326,23 @@ const place = async (w: ReturnType<typeof world>, input = body()) => createOrder
     await act(supA, "prepare"); assert.equal(it.deliveryStatus, "PREPARING");
     await act(supA, "ready"); assert.equal(it.deliveryStatus, "READY"); assert.equal(w.notes.at(-1)!.content.type, "delivery.ready");
     await act(supA, "depart"); assert.equal(it.deliveryStatus, "IN_TRANSIT");
-    await act(supA, "deliver"); assert.equal(it.daysDelivered, 1); assert.equal(it.deliveryStatus, "SCHEDULED"); assert.equal(it.status, "ACTIVE"); assert.equal(it.lastDeliveredOn, TODAY);
+    await act(supA, "deliver"); assert.equal(it.daysDelivered, 0); assert.equal(it.deliveryStatus, "DELIVERED"); assert.equal(it.lastDeliveredOn, TODAY); // xaridor tasdig'igacha kun hisoblanmaydi
     assert.equal(w.notes.at(-1)!.content.type, "delivery.done"); assert.deepEqual(w.notes.at(-1)!.recipient, { businessId: "bC" });
-    assert.equal(w.notes.length, 2); // prepare va depart uchun bildirishnoma yo'q
+    await act(biz, "receive"); assert.equal(it.daysDelivered, 1); assert.equal(it.deliveryStatus, "SCHEDULED"); assert.equal(it.status, "ACTIVE");
+    assert.deepEqual(w.notes.at(-1)!.recipient, { supplierId: SA }); assert.equal(w.notes.length, 3); // prepare va depart uchun bildirishnoma yo'q
   });
   await t("bir kunda ikkinchi yetkazish -> 409 (kun hisobi aldanmaydi)", async () => {
     const { it, act } = await flow(); await act(supA, "accept");
-    for (const a of ["prepare", "ready", "depart", "deliver", "prepare", "ready", "depart"]) await act(supA, a);
+    for (const a of ["prepare", "ready", "depart", "deliver"]) await act(supA, a);
+    await act(biz, "receive");
+    for (const a of ["prepare", "ready", "depart"]) await act(supA, a);
     assert.equal(await errOf(() => act(supA, "deliver")), "CONFLICT:409"); assert.equal(it.daysDelivered, 1);
   });
   await t("oxirgi kun yetkazilgach qism va shartnoma COMPLETED", async () => {
     const { w, it, act } = await flow("supplier", 1); await act(supA, "accept");
     for (const a of ["prepare", "ready", "depart", "deliver"]) await act(supA, a);
+    assert.equal(it.status, "ACTIVE"); assert.equal(w.contracts[0]!.status, "ACTIVE"); // tasdiqlanmaguncha yakunlanmaydi
+    await act(biz, "receive");
     assert.equal(it.status, "COMPLETED"); assert.equal(it.deliveryStatus, "DELIVERED"); assert.equal(w.contracts[0]!.status, "COMPLETED");
     assert.equal(await errOf(() => act(supA, "prepare")), "CONFLICT:409");
   });
@@ -349,6 +365,34 @@ const place = async (w: ReturnType<typeof world>, input = body()) => createOrder
     assert.equal(await errOf(() => f2.act(supA, "prepare")), "CONFLICT:409");
     await f2.act(supA, "resume"); assert.equal(f2.it.status, "ACTIVE"); assert.equal(f2.w.contracts[0]!.status, "ACTIVE");
     assert.ok(w && it);
+  });
+  await t("receive: faqat biznes, faqat DELIVERED holatda; yetkazilmaguncha 409; supplier/admin/begona -> 403/404", async () => {
+    const { it, act } = await flow(); await act(supA, "accept");
+    assert.equal(await errOf(() => act(biz, "receive")), "CONFLICT:409");
+    for (const a of ["prepare", "ready", "depart", "deliver"]) await act(supA, a);
+    assert.equal(await errOf(() => act(supA, "receive")), "FORBIDDEN:403"); assert.equal(await errOf(() => act(adm, "receive")), "FORBIDDEN:403");
+    assert.equal(await errOf(() => act(biz2, "receive")), "NOT_FOUND:404"); assert.equal(it.daysDelivered, 0);
+    await act(biz, "receive"); assert.equal(await errOf(() => act(biz, "receive")), "CONFLICT:409"); assert.equal(it.daysDelivered, 1);
+  });
+  await t("avtomatik tasdiqlash: o'tgan kuni yetkazilgan va tasdiqlanmagan kun keyingi harakatda hisoblanadi (audit bilan)", async () => {
+    const { w, it, act } = await flow("supplier", 3); await act(supA, "accept");
+    for (const a of ["prepare", "ready", "depart", "deliver"]) await act(supA, a);
+    it.lastDeliveredOn = "2000-01-01"; // kecha emas, kelishuv: bugundan oldin
+    await act(supA, "prepare");
+    assert.equal(it.daysDelivered, 1); assert.equal(it.deliveryStatus, "PREPARING");
+    assert.ok(w.audits.some((a) => a.action === "order.auto_receive")); assert.ok(w.audits.some((a) => a.action === "order.prepare"));
+  });
+  await t("avtomatik tasdiqlash: oxirgi kun bo'lsa qism COMPLETED bo'ladi va yangi tayyorlash 409", async () => {
+    const { w, it, act } = await flow("supplier", 1); await act(supA, "accept");
+    for (const a of ["prepare", "ready", "depart", "deliver"]) await act(supA, a);
+    it.lastDeliveredOn = "2000-01-01";
+    assert.equal(await errOf(() => act(supA, "prepare")), "CONFLICT:409");
+    assert.equal(it.status, "COMPLETED"); assert.equal(w.contracts[0]!.status, "COMPLETED"); assert.equal(it.daysDelivered, 1);
+  });
+  await t("bugun yetkazilgan, hali tasdiqlanmagan bo'lsa avtomatik tasdiqlanmaydi (supplier prepare qila olmaydi)", async () => {
+    const { it, act } = await flow(); await act(supA, "accept");
+    for (const a of ["prepare", "ready", "depart", "deliver"]) await act(supA, a);
+    assert.equal(await errOf(() => act(supA, "prepare")), "CONFLICT:409"); assert.equal(it.daysDelivered, 0);
   });
   await t("E huquqlar: biznes yetkazish harakatini, supplier pickup qila olmaydi; begona supplier -> 404; admin -> 403", async () => {
     const { act } = await flow(); await act(supA, "accept");
