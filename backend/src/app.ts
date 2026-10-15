@@ -27,6 +27,8 @@ export interface BuildAppOptions {
   registrations?: RegistrationStore;
   /** Cron sirri (env CRON_SECRET). Berilmasa /api/internal/* 501. */
   cronSecret?: string;
+  /** Bazaga yengil so'rov (/api/ready). Berilmasa /api/ready 503 (not_configured). */
+  readinessCheck?: () => Promise<void>;
 }
 
 export async function buildApp(options: BuildAppOptions = {}): Promise<FastifyInstance> {
@@ -69,6 +71,7 @@ export async function buildApp(options: BuildAppOptions = {}): Promise<FastifyIn
     ...(options.tokens ? { tokens: options.tokens } : {}),
     ...(options.registrations ? { registrations: options.registrations } : {}),
     ...(options.cronSecret ? { cronSecret: options.cronSecret } : {}),
+    ...(options.readinessCheck ? { readinessCheck: options.readinessCheck } : {}),
   })), { prefix: "/api" });
   return app;
 }
