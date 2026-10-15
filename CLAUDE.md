@@ -83,7 +83,7 @@ PostgreSQL (Neon)
   | `POST /api/users/:id` | Faqat `ADMIN` (`users.manage`): `{status: "BLOCKED", reason}` (sabab majburiy, ACTIVE/PENDING dan) yoki `{status: "ACTIVE"}` (BLOCKED/PENDING dan). O'zini va boshqa adminni o'zgartirib bo'lmaydi (409). Audit `user.blocked`/`user.activated`. Bloklangan foydalanuvchi keyingi so'rovdayoq 403 oladi (holat har so'rovda bazadan). `GET /api/users` — admin ro'yxati |
   | `POST /api/notifications/read-all`, `POST /api/notifications/:id/read` | Faqat o'zining bildirishnomasini o'qilgan qiladi (begona/yo'q -> 404, body bo'sh `{}`). Bildirishnomalarni yaratish buyurtma/to'lov/nizo tranzaksiyalari ichida; Telegramga yuborish ixtiyoriy (`TELEGRAM_NOTIFICATIONS=true`, yuqoriga qarang) |
   | `POST /api/ratings` | `{orderId, itemId, score (1-5), comment?}`: faqat YAKUNLANGAN (COMPLETED) qism uchun; biznes supplierni (TO_SUPPLIER), supplier biznesni (TO_BUSINESS) baholaydi, har tomon bir marta (takror 409, yakunlanmagan 409, begona 404, admin 403). Tomon va baholanuvchi serverda rolidan olinadi. Baho + o'rtacha bal/soni (`rating`, `ratingCount`) + audit + bildirishnoma bitta tranzaksiyada. GET yo'q: o'rtacha bal supplier/biznes yozuvida ko'rinadi |
-  | `POST /api/internal/overdue-sweep` | Foydalanuvchi tokeni emas, `x-cron-secret` sarlavhasi (env `CRON_SECRET`, >= 32 belgi, vaqt bo'yicha bir xil taqqoslanadi). Muddati o'tgan PENDING to'lovlarni OVERDUE qiladi, xaridorga bildirishnoma + audit ("Tizim") yozadi, bir tranzaksiyada; takror chaqirish xavfsiz (faqat PENDING o'tadi). `CRON_SECRET` yo'q -> 501, noto'g'ri sir -> 401. Render Cron Job chaqiradi (`backend/docs/CRON.md`) |
+  | `POST /api/internal/overdue-sweep` | Foydalanuvchi tokeni emas, `x-cron-secret` sarlavhasi (env `CRON_SECRET`, >= 32 belgi, vaqt bo'yicha bir xil taqqoslanadi). Muddati o'tgan PENDING to'lovlarni OVERDUE qiladi, xaridorga bildirishnoma + audit ("Tizim") yozadi, bir tranzaksiyada; takror chaqirish xavfsiz (faqat PENDING o'tadi). `CRON_SECRET` yo'q -> 501, noto'g'ri sir -> 401. GitHub Actions (`.github/workflows/overdue-sweep.yml`, har soat; sir GitHub Secrets'da) chaqiradi, qo'llanma `backend/docs/CRON.md` |
   | `POST /api/products`, `PATCH /api/products/:id`, `DELETE /api/products/:id` | faqat supplier (`products.manage`), faqat o'z mahsuloti (begona -> 404); supplierId tokendan, birlik nomdan; audit bilan bitta tranzaksiyada |
   | `GET /api/admin/audit-logs` | faqat `ADMIN` + `audit.view` |
   | `GET /api/auth`, `GET /api/admin` | `501 NOT_IMPLEMENTED` |
@@ -100,7 +100,7 @@ PostgreSQL (Neon)
 - Birinchi admin qo'lda SQL bilan yaratiladi: `backend/docs/ADMIN_BOOTSTRAP.md`.
 
 ### Sirlar va muhit
-- Render env'da: `DATABASE_URL`, `JWT_SECRET` (>= 32 belgi), `TELEGRAM_BOT_TOKEN`, `TELEGRAM_NOTIFICATIONS` (ixtiyoriy, `true` bilan yoqiladi), `CRON_SECRET` (ixtiyoriy, cron uchun), `CORS_ORIGIN`, `NODE_ENV=production`, `TRUST_PROXY` va boshqalar (`backend/.env.example` ro'yxati).
+- Render env'da: `DATABASE_URL`, `JWT_SECRET` (>= 32 belgi), `TELEGRAM_BOT_TOKEN`, `TELEGRAM_NOTIFICATIONS` (ixtiyoriy, `true` bilan yoqiladi), `CRON_SECRET` (ixtiyoriy, cron uchun; GitHub Secrets'da ham bir xil qiymat), `CORS_ORIGIN`, `NODE_ENV=production`, `TRUST_PROXY` va boshqalar (`backend/.env.example` ro'yxati).
 - `.gitignore` (ildiz va `backend/`) `.env`, `.env.*` ni bloklaydi, `!.env.example` ruxsat.
 - Sir skaneri: `cd backend && npm run check:secrets`; pre-commit hook: `git config core.hooksPath .githooks`.
 - Repoda `render.yaml` yo'q: Render sozlamalari dashboard'da.
