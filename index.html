@@ -73,6 +73,7 @@ pre.sc{background:var(--bg);border:1px solid var(--line);border-radius:10px;padd
 <div id="app"></div>
 <p class="hint" id="foot" style="text-align:center;margin-top:16px"></p>
 <p class="hint" id="srv" style="text-align:center"></p>
+<div id="reg"></div>
 </main>
 <div id="adm" hidden></div>
 <!-- Telegram Mini App kutubxonasi (initData beradi). Telegramdan tashqarida ham sahifa avvalgidek ishlaydi. -->
@@ -672,10 +673,34 @@ function route(){const ad=location.hash==="#admin";Auth.ctx=ad?"admin":"app";if(
 addEventListener("hashchange",route);
 // Server bilan ulanish: faqat env.js da useBackend=true bo'lganda. Demo (localStorage) ishlashiga ta'sir qilmaydi.
 // Token faqat xotirada. Rol serverdan keladi, bu yerda faqat holat ko'rsatiladi (haqiqiy ruxsat serverda tekshiriladi).
+/* Ro'yxatdan o'tish formasi: faqat server ulangan va Telegram hisobi hali bog'lanmagan bo'lsa (ACCOUNT_NOT_LINKED) ko'rsatiladi.
+   Rol faqat Biznes/Supplier (admin tanlanmaydi). Holat va kimlik serverda belgilanadi; bu yerda faqat ma'lumot yig'iladi. Demo ilova (localStorage) ta'sirlanmaydi. */
+const REG_TYPES=["Do'kon","Kafe","Nonvoyxona","Qandolatchilik","Restoran","Mehmonxona","Bog'cha","Boshqa"];
+function regForm(api,srv){
+  const box=$("reg"),F={type:REG_TYPES[0]};let role="business",msg="",busy=false;
+  const inp=(k,label,attrs)=>`<label>${label}<input data-f="${k}" value="${esc(F[k]||"")}" ${attrs||""}></label>`;
+  const draw=()=>{const b=role==="business";
+    box.innerHTML=`<div class="card"><h2>Ro'yxatdan o'tish</h2><p class="hint">Telegram hisobingiz SutBozor'ga hali ulanmagan. Ma'lumotlaringizni kiriting.</p>
+<div class="seg"><button data-rr="business" aria-pressed="${b}">Biznes</button><button data-rr="supplier" aria-pressed="${!b}">Xo'jalik (Supplier)</button></div>
+<div class="grid" style="margin-top:10px">${inp("name","Ismingiz",'maxlength="100" autocomplete="name"')}${inp("phone","Telefon",'type="tel" placeholder="+998 90 123 45 67" autocomplete="tel"')}${inp("email","Email (ixtiyoriy)",'type="email" maxlength="254" autocomplete="email"')}${inp("org",b?"Biznes nomi":"Xo'jalik nomi",'maxlength="100"')}
+${b?`<label>Turi<select data-f="type">${REG_TYPES.map(t=>`<option${t===F.type?" selected":""}>${esc(t)}</option>`).join("")}</select></label>${inp("area","Mahalla / hudud",'maxlength="60"')}${inp("address","Manzil",'maxlength="200"')}`:`${inp("area","Mahalla / hudud",'maxlength="60"')}${inp("radius","Yetkazish radiusi (km)",'type="number" min="1" max="100" step="1" inputmode="numeric"')}`}</div>
+<p class="msg" role="alert">${esc(msg)}</p><div class="acts"><button class="btn p" data-rg="go"${busy?" disabled":""}>${busy?"Yuborilmoqda…":"Ro'yxatdan o'tish"}</button></div></div>`};
+  const submit=()=>{if(busy)return;const b=role==="business",g=k=>(F[k]||"").trim();
+    const organization=b?{name:g("org"),type:F.type,area:g("area"),address:g("address")}:{name:g("org"),area:g("area"),deliveryRadiusKm:Number(g("radius"))};
+    if(!b&&!Number.isInteger(organization.deliveryRadiusKm)){msg="Yetkazish radiusini butun son (km) bilan kiriting.";draw();return}
+    const payload={role,name:g("name"),phone:g("phone"),organization};if(g("email"))payload.email=g("email");
+    busy=true;msg="";draw();
+    api.auth.register(payload).then(u=>{srv.textContent="Server: ulandi ("+u.role+")";box.innerHTML=`<div class="card"><h2>Ro'yxatdan o'tdingiz</h2><p class="hint">Hisobingiz yaratildi. Hozircha ilovaning asosiy bo'limlari demo ma'lumot bilan ishlaydi, haqiqiy buyurtmalar keyingi bosqichlarda ulanadi.</p></div>`})
+    .catch(e=>{busy=false;msg=e&&e.message?e.message:"Xato yuz berdi.";if(e&&e.code==="CONFLICT"&&/allaqachon ro'yxatdan o'tgansiz/.test(e.message||""))msg+=" Sahifani qayta oching.";draw()})};
+  box.addEventListener("input",e=>{const k=e.target&&e.target.dataset&&e.target.dataset.f;if(k)F[k]=e.target.value});
+  box.addEventListener("click",e=>{const r=e.target.closest("[data-rr]");if(r){role=r.dataset.rr;msg="";draw();return}if(e.target.closest("[data-rg]"))submit()});
+  draw()}
 (function(){try{const el=$("srv"),api=srvApi();if(!el||!api)return;
 const tg=window.Telegram&&window.Telegram.WebApp;try{if(tg&&tg.ready)tg.ready()}catch(x){}
 el.textContent="Server bilan ulanmoqda…";
-api.auth.loginWithTelegram().then(u=>{el.textContent="Server: ulandi ("+u.role+")"}).catch(e=>{el.textContent="Server: "+(e&&e.code?e.code:"xato")+(e&&e.message?" - "+e.message:"")})}catch(x){}})();
+api.auth.loginWithTelegram().then(u=>{el.textContent="Server: ulandi ("+u.role+")"}).catch(e=>{
+  if(e&&e.code==="ACCOUNT_NOT_LINKED"){el.textContent="Server: ro'yxatdan o'tmagansiz";regForm(api,el);return}
+  el.textContent="Server: "+(e&&e.code?e.code:"xato")+(e&&e.message?" - "+e.message:"")})}catch(x){}})();
 route();
 </script>
 </body>

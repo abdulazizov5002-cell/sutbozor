@@ -1,7 +1,7 @@
 /**
  * authService: kirish va joriy foydalanuvchi.
- * Backend endpointlari: GET /api/auth/me (tayyor), POST /api/auth/telegram, /api/auth/admin/login, /api/auth/logout (keyingi bosqich:
- * hozir 501 qaytaradi, xizmat buni ApiError(NOT_IMPLEMENTED) sifatida uzatadi).
+ * Backend endpointlari: GET /api/auth/me, POST /api/auth/telegram, POST /api/auth/register (tayyor); /api/auth/admin/login,
+ * /api/auth/logout (keyingi bosqich: hozir 501 qaytaradi, xizmat buni ApiError(NOT_IMPLEMENTED) sifatida uzatadi).
  * Biznes/Supplier Telegram Mini App orqali kiradi (initData serverda imzo bo'yicha tekshiriladi). Admin kirishi alohida.
  * Token faqat xotirada. `permissions` faqat interfeysni ko'rsatish uchun, haqiqiy ruxsat serverda tekshiriladi.
  */
@@ -34,6 +34,19 @@
         var initData = telegramInitData();
         if (!initData) return Promise.reject(new ApiError(0, "TELEGRAM_UNAVAILABLE", "Ilovani Telegram ichida oching."));
         return client.post("/api/auth/telegram", { body: { initData: initData }, noAuth: true }).then(storeSession);
+      },
+      /**
+       * Ro'yxatdan o'tish: payload = { role: "business"|"supplier", name, phone, email?, organization: {...} }.
+       * initData avtomatik qo'shiladi. Kimlik va holat serverda belgilanadi. Muvaffaqiyatda token saqlanadi (kirgan hisoblanadi).
+       */
+      register: function (payload) {
+        var initData = telegramInitData();
+        if (!initData) return Promise.reject(new ApiError(0, "TELEGRAM_UNAVAILABLE", "Ilovani Telegram ichida oching."));
+        if (!payload || typeof payload !== "object") return Promise.reject(new ApiError(0, "CLIENT_VALIDATION", "Ma'lumotlar berilmagan."));
+        var body = {};
+        for (var k in payload) if (Object.prototype.hasOwnProperty.call(payload, k)) body[k] = payload[k];
+        body.initData = initData;
+        return client.post("/api/auth/register", { body: body, noAuth: true }).then(storeSession);
       },
       adminLogin: function (username, password) {
         if (typeof username !== "string" || username.length < 3 || username.length > 64) {
