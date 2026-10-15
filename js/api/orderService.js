@@ -1,8 +1,8 @@
 /**
  * orderService: Buyurtmalar (parent buyurtma va supplier qismlari).
- * Hozir backendda mavjud: GET /api/orders va GET /api/orders/:id (ruxsat va egalik serverda tekshiriladi:
- * biznes faqat o'zinikini, supplier faqat o'z qismini ko'radi). Yozish amallari keyingi bosqichda qo'shiladi
- * va shu xizmatga metod sifatida ulanadi (frontend chaqiruvlari o'zgarmaydi).
+ * Backendda mavjud: GET /api/orders, GET /api/orders/:id (biznes faqat o'zinikini, supplier faqat o'z qismini ko'radi),
+ * POST /api/orders (faqat biznes) va POST /api/orders/:id/items/:itemId (accept/reject: supplier, cancel: biznes).
+ * Narx va huquq serverda aniqlanadi: frontend narx yubormaydi.
  */
 (function (global) {
   "use strict";
@@ -20,6 +20,20 @@
       getById: function (id) {
         return h.attempt(function () {
           return client.get("/api/orders/" + h.idPath(id));
+        });
+      },
+      /** o = { product, days, deliveryMode, paymentSchedule, prepTime?, items: [{ supplierId, quantityPerDay }] } */
+      create: function (o) {
+        return h.attempt(function () {
+          return client.post("/api/orders", { body: o });
+        });
+      },
+      /** action: "accept" | "reject" | "cancel"; reject va cancel uchun reason (kamida 3 belgi) majburiy. */
+      act: function (orderId, itemId, action, reason) {
+        var body = { action: action };
+        if (reason) body.reason = reason;
+        return h.attempt(function () {
+          return client.post("/api/orders/" + h.idPath(orderId) + "/items/" + h.idPath(itemId), { body: body });
         });
       },
     };
