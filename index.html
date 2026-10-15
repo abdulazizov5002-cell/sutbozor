@@ -75,6 +75,7 @@ pre.sc{background:var(--bg);border:1px solid var(--line);border-radius:10px;padd
 <p class="hint" id="srv" style="text-align:center"></p>
 <div id="reg"></div>
 <div id="sprod"></div>
+<div id="sord"></div>
 </main>
 <div id="adm" hidden></div>
 <!-- Telegram Mini App kutubxonasi (initData beradi). Telegramdan tashqarida ham sahifa avvalgidek ishlaydi. -->
@@ -85,6 +86,7 @@ pre.sc{background:var(--bg);border:1px solid var(--line);border-radius:10px;padd
 <script src="js/api/apiClient.js"></script>
 <script src="js/api/authService.js"></script>
 <script src="js/api/productService.js"></script>
+<script src="js/api/supplierService.js"></script>
 <script src="js/api/orderService.js"></script>
 <script src="js/api/paymentService.js"></script>
 <script src="js/api/index.js"></script>
@@ -724,8 +726,55 @@ function supProducts(api){
   box.addEventListener("click",e=>{if(busy)return;const b=e.target.closest("[data-sa]");if(!b)return;const a=b.dataset.sa,id=b.dataset.id;
     if(a==="add")add();else if(a==="save")save(id);else if(a==="del"){delId=id;draw()}else if(a==="delno"){delId=null;draw()}else if(a==="del2")del(id)});
   busy=true;draw();load()}
+/* Serverdagi buyurtmalar (POST /api/orders, POST /api/orders/:id/items/:itemId). Faqat server ulangan va rol business/supplier bo'lsa ko'rinadi.
+   Biznes: supplierni o'zi tanlaydi, narx serverdan olinadi. Supplier: o'z qismini qabul/rad etadi. Biznes: kutilayotgan qismni bekor qiladi.
+   Demo bo'limlar (localStorage) ta'sirlanmaydi. Token 15 daqiqada tugaydi: 401 bo'lsa Telegram orqali qayta kiriladi. */
+function srvOrders(api,role){
+  const box=$("sord"),biz=role==="business",ST={SENT:["Kutilmoqda","w"],ACTIVE:["Qabul qilingan",""],CANCELLED:["Rad/bekor","x"],PAUSED:["To'xtatilgan","n"],COMPLETED:["Yakunlangan","n"]},MODE={supplier:"Yetkazib berish",pickup:"Olib ketish"};
+  const FM={product:Object.keys(CAT)[0],days:"30",mode:"supplier",pay:"WEEKLY"},Q={},AX={key:"",action:"",reason:""};
+  let products=[],sups={},orders=[],msg="",ok="",busy=false;
+  const call=f=>(api.auth.isAuthenticated()?Promise.resolve():api.auth.loginWithTelegram()).then(f).catch(e=>{if(e&&e.status===401)return api.auth.loginWithTelegram().then(f);throw e});
+  const fail=e=>{busy=false;ok="";msg=e&&e.message?e.message:"Xato yuz berdi.";draw()};
+  const money=n=>Number(n).toLocaleString("ru-RU").replace(/ /g," ");
+  const sname=id=>(sups[id]&&sups[id].name)||"Supplier";
+  const itemRow=(o,i)=>{const key=o.id+i.id,st=ST[i.status]||[i.status,"n"],u=CAT[o.product]||"",who=biz?esc(sname(i.supplierId)):"";
+    const can=i.status==="SENT",open=AX.key===key;
+    const btns=!can?"":open?`<input type="text" maxlength="300" placeholder="${AX.action==="accept"?"":"Sabab (kamida 3 belgi)"}" data-ar="1" value="${esc(AX.reason)}" style="flex:1;min-width:140px"><button class="btn s p" data-sa="go"${busy?" disabled":""}>Tasdiqlash</button><button class="btn s" data-sa="no">Yo'q</button>`
+      :biz?`<button class="btn s d" data-sa="ask" data-k="${key}" data-ac="cancel">Bekor qilish</button>`
+      :`<button class="btn s p" data-sa="go-now" data-o="${o.id}" data-i="${i.id}"${busy?" disabled":""}>Qabul qilish</button><button class="btn s d" data-sa="ask" data-k="${key}" data-ac="reject" data-o="${o.id}" data-i="${i.id}">Rad etish</button>`;
+    return `<div class="row f" style="padding:6px 0"><div>${who?`<b>${who}</b>`:""}<small>${esc(i.quantityPerDay)} ${esc(u)}/kun · ${money(i.pricePerUnit)} so'm/${esc(u)}</small></div><span class="tag ${st[1]}">${esc(st[0])}</span></div>${btns?`<div class="acts" style="margin:0 0 6px" data-key="${key}" data-o="${o.id}" data-i="${i.id}">${btns}</div>`:""}`};
+  const orderCard=o=>`<div class="row" style="display:block"><b>${esc(o.publicId)} · ${esc(o.product)}</b><small>${esc(o.days)} kun · ${esc(MODE[o.deliveryMode]||o.deliveryMode)} · ${esc(PAYL[o.paymentSchedule]||o.paymentSchedule)}</small>${o.items.map(i=>itemRow(o,i)).join("")}</div>`;
+  const offers=()=>products.filter(p=>p.name===FM.product);
+  const form=()=>{const u=CAT[FM.product],of=offers();
+    return `<h3 style="font-size:16px;margin:4px 0 2px">Yangi buyurtma</h3><p class="hint">Supplierni o'zingiz tanlang va kunlik miqdorni yozing. Narxni server supplierning mahsulotidan oladi. Komissiya: 0%.</p>
+<div class="grid"><label>Mahsulot<select data-f="product">${Object.keys(CAT).map(n=>`<option${n===FM.product?" selected":""}>${esc(n)}</option>`).join("")}</select></label><label>Necha kun<input type="number" inputmode="numeric" min="1" max="365" step="1" data-f="days" value="${esc(FM.days)}"></label><label>Yetkazish<select data-f="mode">${Object.keys(MODE).map(k=>`<option value="${k}"${k===FM.mode?" selected":""}>${esc(MODE[k])}</option>`).join("")}</select></label><label>To'lov (faqat yozib boriladi)<select data-f="pay">${Object.keys(PAYL).map(k=>`<option value="${k}"${k===FM.pay?" selected":""}>${esc(PAYL[k])}</option>`).join("")}</select></label></div>
+${of.length?of.map(p=>{const s=sups[p.supplierId]||{};return `<div class="row"><div><b>${esc(s.name||"Supplier")}</b><small>${esc(s.area||"")} · ${money(p.pricePerUnit)} so'm/${esc(u)} · kunlik hajm ${esc(p.dailyCapacity)} ${esc(u)}</small></div><label style="min-width:110px">${esc(u)}/kun<input type="number" inputmode="decimal" min="0" step="0.01" max="${esc(p.dailyCapacity)}" data-q="${p.supplierId}" value="${esc(Q[p.supplierId]||"")}"></label></div>`}).join(""):`<p class="hint">Hozircha bu mahsulotni sotadigan supplier yo'q.</p>`}
+<p class="msg" role="alert">${esc(msg)}</p>${ok?`<p class="hint" style="color:var(--acc)">${esc(ok)}</p>`:""}<div class="acts"><button class="btn p" data-sa="send"${busy||!of.length?" disabled":""}>${busy?"Yuborilmoqda…":"Buyurtma berish"}</button></div>`};
+  const draw=()=>{const act=document.activeElement&&document.activeElement.dataset&&document.activeElement.dataset.ar;
+    box.innerHTML=`<div class="card"><h2>${biz?"Buyurtmalarim (server)":"Kelgan buyurtmalar (server)"}</h2><p class="hint">Bu bo'lim serverda saqlanadi. Yuqoridagi demo bo'limlar hali brauzer xotirasida ishlaydi.</p>${biz?form():`<p class="msg" role="alert">${esc(msg)}</p>${ok?`<p class="hint" style="color:var(--acc)">${esc(ok)}</p>`:""}`}
+<h3 style="font-size:16px;margin:14px 0 2px">${biz?"Yuborilgan buyurtmalar":"Buyurtmalar"}</h3>${orders.map(orderCard).join("")||`<p class="hint">Hozircha buyurtma yo'q.</p>`}<div class="acts"><button class="btn s" data-sa="reload"${busy?" disabled":""}>Yangilash</button></div></div>`;
+    if(act){const el=box.querySelector("[data-ar]");if(el){el.focus();el.setSelectionRange(el.value.length,el.value.length)}}};
+  const loadOrders=()=>api.orders.list({page:1,limit:50}).then(r=>{orders=(r&&r.items)||[]});
+  const load=()=>{busy=true;draw();return call(()=>biz?Promise.all([api.products.list({page:1,limit:100}),api.suppliers.list({page:1,limit:100}),loadOrders()]).then(a=>{products=(a[0]&&a[0].items)||[];sups={};((a[1]&&a[1].items)||[]).forEach(s=>sups[s.id]=s)}):loadOrders()).then(()=>{busy=false;draw()}).catch(fail)};
+  const send=()=>{const days=Number(FM.days),items=Object.keys(Q).filter(id=>Q[id]!==""&&Number(Q[id])>0).map(id=>({supplierId:id,quantityPerDay:Number(Q[id])}));
+    if(!Number.isInteger(days)||days<1||days>365){msg="Kunlar soni 1 dan 365 gacha butun son bo'lishi kerak.";draw();return}
+    if(!items.length){msg="Kamida bitta supplierga miqdor yozing.";draw();return}
+    if(items.some(i=>!Number.isFinite(i.quantityPerDay)||Math.round(i.quantityPerDay*100)!==i.quantityPerDay*100)){msg="Miqdor ko'pi bilan 2 ta kasr raqamli son bo'lsin.";draw();return}
+    busy=true;msg="";ok="";draw();
+    call(()=>api.orders.create({product:FM.product,days:days,deliveryMode:FM.mode,paymentSchedule:FM.pay,items:items})).then(o=>{Object.keys(Q).forEach(k=>delete Q[k]);ok="Buyurtma "+o.publicId+" yuborildi. Supplier javobini kuting.";return loadOrders()}).then(()=>{busy=false;draw()}).catch(fail)};
+  const go=(o,i,action,reason)=>{if((action!=="accept")&&String(reason||"").trim().length<3){msg="Sababni yozing (kamida 3 belgi).";draw();return}
+    busy=true;msg="";ok="";AX.key="";draw();
+    call(()=>api.orders.act(o,i,action,String(reason||"").trim())).then(()=>{ok={accept:"Qabul qilindi.",reject:"Rad etildi.",cancel:"Bekor qilindi."}[action];return loadOrders()}).then(()=>{busy=false;draw()}).catch(e=>{loadOrders().catch(()=>{}).then(()=>fail(e))})};
+  box.addEventListener("input",e=>{const d=e.target&&e.target.dataset;if(!d)return;if(d.f){FM[d.f]=e.target.value;if(d.f==="product"){msg="";Object.keys(Q).forEach(k=>delete Q[k]);draw()}}else if(d.q)Q[d.q]=e.target.value;else if(d.ar)AX.reason=e.target.value});
+  box.addEventListener("click",e=>{if(busy)return;const b=e.target.closest("[data-sa]");if(!b)return;const a=b.dataset.sa;
+    if(a==="send")send();else if(a==="reload")load();else if(a==="no"){AX.key="";draw()}
+    else if(a==="ask"){AX.key=b.dataset.k;AX.action=b.dataset.ac;AX.reason="";msg="";draw()}
+    else if(a==="go-now"){go(b.dataset.o,b.dataset.i,"accept","")}
+    else if(a==="go"){const p=b.closest("[data-key]");go(p.dataset.o,p.dataset.i,AX.action,AX.reason)}});
+  load()}
 /* Serverga kirgan foydalanuvchi: holat qatori + (supplier bo'lsa) mahsulotlar bo'limi. */
-function srvUser(api,el,u){el.textContent="Server: ulandi ("+u.role+")";if(u.role==="supplier"&&!$("sprod").dataset.on){$("sprod").dataset.on="1";supProducts(api)}}
+function srvUser(api,el,u){el.textContent="Server: ulandi ("+u.role+")";if(u.role==="supplier"&&!$("sprod").dataset.on){$("sprod").dataset.on="1";supProducts(api)}
+  if((u.role==="supplier"||u.role==="business")&&!$("sord").dataset.on){$("sord").dataset.on="1";srvOrders(api,u.role)}}
 (function(){try{const el=$("srv"),api=srvApi();if(!el||!api)return;
 const tg=window.Telegram&&window.Telegram.WebApp;try{if(tg&&tg.ready)tg.ready()}catch(x){}
 el.textContent="Server bilan ulanmoqda…";
