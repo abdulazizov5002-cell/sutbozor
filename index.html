@@ -76,6 +76,7 @@ pre.sc{background:var(--bg);border:1px solid var(--line);border-radius:10px;padd
 <div id="reg"></div>
 <div id="sprod"></div>
 <div id="sord"></div>
+<div id="spay"></div>
 </main>
 <div id="adm" hidden></div>
 <!-- Telegram Mini App kutubxonasi (initData beradi). Telegramdan tashqarida ham sahifa avvalgidek ishlaydi. -->
@@ -777,9 +778,47 @@ ${of.length?of.map(p=>{const s=sups[p.supplierId]||{};return `<div class="row"><
     else if(a==="go-now"){go(b.dataset.o,b.dataset.i,b.dataset.ac,"")}
     else if(a==="go"){const p=b.closest("[data-key]");go(p.dataset.o,p.dataset.i,AX.action,AX.reason)}});
   load()}
+/* Serverdagi to'lov yozuvlari (POST /api/payments/:id). SutBozor pul ushlab turmaydi: biznes supplierga to'g'ridan-to'g'ri to'laydi,
+   bu yerda faqat yozib boriladi. Biznes "To'lov qildim" yozadi, supplier "Pul keldi/kelmadi" deydi. Summani server biladi. Demo bo'limlar ta'sirlanmaydi. */
+function srvPayments(api,role){
+  const box=$("spay"),biz=role==="business",ST={PENDING:["To'lov kutilmoqda","w"],PAYMENT_SUBMITTED:["Tasdiq kutilmoqda","w"],PAID:["To'langan",""],OVERDUE:["Muddati o'tgan","x"],CANCELLED:["Bekor","n"],DISPUTED:["Pul kelmadi","x"]},METHODS=["Naqd","Bank o'tkazmasi","Karta → karta"],TODAY=new Date().toLocaleDateString("en-CA",{timeZone:"Asia/Tashkent"});
+  const FM={key:"",method:METHODS[0],tx:"",paidOn:TODAY,note:""},RJ={key:"",reason:""};
+  let list=[],sups={},msg="",ok="",busy=false;
+  const call=f=>(api.auth.isAuthenticated()?Promise.resolve():api.auth.loginWithTelegram()).then(f).catch(e=>{if(e&&e.status===401)return api.auth.loginWithTelegram().then(f);throw e});
+  const fail=e=>{busy=false;ok="";msg=e&&e.message?e.message:"Xato yuz berdi.";draw()};
+  const money=n=>Number(n).toLocaleString("ru-RU").replace(/ /g," ");
+  const row=p=>{const st=ST[p.status]||[p.status,"n"],canPay=biz&&(p.status==="PENDING"||p.status==="OVERDUE"||p.status==="DISPUTED"),canJudge=!biz&&p.status==="PAYMENT_SUBMITTED",openPay=FM.key===p.id,openNo=RJ.key===p.id;
+    const sn=biz&&sups[p.supplierId]&&sups[p.supplierId].name?" · "+esc(sups[p.supplierId].name):"";
+    const info=(p.transactionId?`<small style="display:block">${esc(p.paymentMethod||"")} · tranzaksiya: ${esc(p.transactionId)}${p.paidAt?" · "+esc(p.paidAt):""}</small>`:"")+(p.status==="DISPUTED"&&p.note?`<small style="display:block">Supplier izohi: ${esc(p.note)}</small>`:"");
+    let acts="";
+    if(openPay)acts=`<div class="grid"><label>Usul<select data-pf="method">${METHODS.map(m=>`<option${m===FM.method?" selected":""}>${esc(m)}</option>`).join("")}</select></label><label>Tranzaksiya raqami<input type="text" maxlength="60" data-pf="tx" value="${esc(FM.tx)}"></label><label>To'langan sana<input type="date" max="${TODAY}" data-pf="paidOn" value="${esc(FM.paidOn)}"></label><label>Izoh (ixtiyoriy)<input type="text" maxlength="300" data-pf="note" value="${esc(FM.note)}"></label></div><div class="acts"><button class="btn s p" data-pa="submit" data-id="${p.id}"${busy?" disabled":""}>Yuborish</button><button class="btn s" data-pa="close">Yopish</button></div>`;
+    else if(openNo)acts=`<div class="acts"><input type="text" maxlength="300" placeholder="Sabab (kamida 3 belgi)" data-pr="1" value="${esc(RJ.reason)}" style="flex:1;min-width:140px"><button class="btn s p" data-pa="reject" data-id="${p.id}"${busy?" disabled":""}>Tasdiqlash</button><button class="btn s" data-pa="close">Yo'q</button></div>`;
+    else if(canPay)acts=`<div class="acts"><button class="btn s p" data-pa="open" data-id="${p.id}"${busy?" disabled":""}>${p.status==="DISPUTED"?"Qayta yuborish":"To'lov qildim"}</button></div>`;
+    else if(canJudge)acts=`<div class="acts"><button class="btn s p" data-pa="confirm" data-id="${p.id}"${busy?" disabled":""}>Pul keldi</button><button class="btn s d" data-pa="ask" data-id="${p.id}">Pul kelmadi</button></div>`;
+    return `<div class="row f" style="padding:6px 0"><div><b>${esc(p.publicId)} · ${money(p.amount)} so'm</b><small>${p.days>0?esc(p.fromDay)+"–"+esc(p.toDay)+"-kunlar ("+esc(p.days)+" kun) · ":""}muddat: ${esc(p.dueDate)}${sn}</small>${info}</div><span class="tag ${st[1]}">${esc(st[0])}</span></div>${acts}`};
+  const draw=()=>{const act=document.activeElement&&document.activeElement.dataset&&document.activeElement.dataset.pr;
+    box.innerHTML=`<div class="card"><h2>${biz?"To'lovlarim (server)":"Kelgan to'lovlar (server)"}</h2><p class="hint">SutBozor pul ushlab turmaydi va komissiya olmaydi (0%). Biznes supplierga o'zi to'laydi, bu yerda faqat yozib boriladi.</p><p class="msg" role="alert">${esc(msg)}</p>${ok?`<p class="hint" style="color:var(--acc)">${esc(ok)}</p>`:""}${list.map(row).join("")||`<p class="hint">Hozircha to'lov yo'q. Supplier buyurtmani qabul qilgach shu yerda paydo bo'ladi.</p>`}<div class="acts"><button class="btn s" data-pa="reload"${busy?" disabled":""}>Yangilash</button></div></div>`;
+    if(act){const el=box.querySelector("[data-pr]");if(el){el.focus();el.setSelectionRange(el.value.length,el.value.length)}}};
+  const loadList=()=>api.payments.list({page:1,limit:100}).then(r=>{list=(r&&r.items)||[]});
+  const load=()=>{busy=true;draw();return call(()=>Promise.all([loadList(),biz?api.suppliers.list({page:1,limit:100}).then(r=>{sups={};((r&&r.items)||[]).forEach(s=>sups[s.id]=s)}).catch(()=>{}):null])).then(()=>{busy=false;draw()}).catch(fail)};
+  const run=(f,done)=>{busy=true;msg="";ok="";draw();call(f).then(()=>{ok=done;FM.key="";RJ.key="";return loadList()}).then(()=>{busy=false;draw()}).catch(e=>{loadList().catch(()=>{}).then(()=>fail(e))})};
+  const submit=id=>{const tx=FM.tx.trim();
+    if(tx.length<3){msg="Tranzaksiya raqamini yozing (kamida 3 belgi).";draw();return}
+    if(!/^\d{4}-\d{2}-\d{2}$/.test(FM.paidOn)||FM.paidOn>TODAY){msg="To'langan sana kelajakda bo'lishi mumkin emas.";draw();return}
+    run(()=>api.payments.submit(id,{method:FM.method,transactionId:tx,paidOn:FM.paidOn,note:FM.note.trim()}),"To'lov yozildi. Supplier pul kelganini tasdiqlashi kutilmoqda.")};
+  box.addEventListener("input",e=>{const d=e.target&&e.target.dataset;if(!d)return;if(d.pf)FM[d.pf]=e.target.value;else if(d.pr)RJ.reason=e.target.value});
+  box.addEventListener("click",e=>{if(busy)return;const b=e.target.closest("[data-pa]");if(!b)return;const a=b.dataset.pa,id=b.dataset.id;
+    if(a==="reload")load();else if(a==="close"){FM.key="";RJ.key="";draw()}
+    else if(a==="open"){FM.key=id;FM.method=METHODS[0];FM.tx="";FM.paidOn=TODAY;FM.note="";RJ.key="";msg="";draw()}
+    else if(a==="ask"){RJ.key=id;RJ.reason="";FM.key="";msg="";draw()}
+    else if(a==="submit")submit(id);
+    else if(a==="confirm")run(()=>api.payments.confirm(id),"Pul kelgani tasdiqlandi.");
+    else if(a==="reject"){const r=RJ.reason.trim();if(r.length<3){msg="Sababni yozing (kamida 3 belgi).";draw();return}run(()=>api.payments.reject(id,r),"Pul kelmagani yozildi. Xaridor qayta yuborishi mumkin.")}});
+  load()}
 /* Serverga kirgan foydalanuvchi: holat qatori + (supplier bo'lsa) mahsulotlar bo'limi. */
 function srvUser(api,el,u){el.textContent="Server: ulandi ("+u.role+")";if(u.role==="supplier"&&!$("sprod").dataset.on){$("sprod").dataset.on="1";supProducts(api)}
-  if((u.role==="supplier"||u.role==="business")&&!$("sord").dataset.on){$("sord").dataset.on="1";srvOrders(api,u.role)}}
+  if((u.role==="supplier"||u.role==="business")&&!$("sord").dataset.on){$("sord").dataset.on="1";srvOrders(api,u.role)}
+  if((u.role==="supplier"||u.role==="business")&&!$("spay").dataset.on){$("spay").dataset.on="1";srvPayments(api,u.role)}}
 (function(){try{const el=$("srv"),api=srvApi();if(!el||!api)return;
 const tg=window.Telegram&&window.Telegram.WebApp;try{if(tg&&tg.ready)tg.ready()}catch(x){}
 el.textContent="Server bilan ulanmoqda…";
