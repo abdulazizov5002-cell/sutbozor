@@ -2,6 +2,7 @@ import type { RegistrationStore, TelegramAccountStore, TelegramVerifier, TokenSe
 import { createUnimplementedTelegramVerifier } from "./auth/telegram/verifier";
 import { createAuthController } from "./controllers/auth.controller";
 import { disputeController } from "./controllers/dispute.controller";
+import { maintenanceController } from "./controllers/maintenance.controller";
 import { ratingController } from "./controllers/rating.controller";
 import { entityController } from "./controllers/entity.controller";
 import { orderController } from "./controllers/order.controller";
@@ -26,6 +27,8 @@ export interface ContainerOptions {
   tokens?: TokenService;
   /** Ro'yxatdan o'tish ombori (Prisma). Berilmasa register 501. */
   registrations?: RegistrationStore;
+  /** Cron sirri (CRON_SECRET). Berilmasa /api/internal/* 501. */
+  cronSecret?: string;
 }
 
 export function buildContainer(repositories: Repositories = notImplementedRepositories(), options: ContainerOptions = {}) {
@@ -42,6 +45,7 @@ export function buildContainer(repositories: Repositories = notImplementedReposi
     ratings: ratingController(services.ratings),
     notifications: notificationController(services.notifications),
     auditLogs: entityController(services.audit),
+    maintenance: maintenanceController(services.maintenance, options.cronSecret),
     auth: createAuthController({
       telegramVerifier: options.telegramVerifier ?? createUnimplementedTelegramVerifier(),
       accounts: options.telegramAccounts,

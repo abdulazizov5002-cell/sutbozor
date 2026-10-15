@@ -57,6 +57,7 @@ export const LOG_REDACT_PATHS = [
   "req.body.initData",
   'req.headers["x-telegram-init-data"]',
   'req.headers["x-api-key"]',
+  'req.headers["x-cron-secret"]',
   "*.password",
   "*.initData",
   "*.secret",

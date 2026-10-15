@@ -1,6 +1,7 @@
 import type { FastifyPluginAsync } from "fastify";
 import type { Container } from "../container";
 import { foundationRoutes } from "./foundation.routes";
+import { internalRoutes } from "./internal.routes";
 import { healthRoutes } from "./health.routes";
 
 /** Barcha route'lar /api prefiksi ostida ro'yxatdan o'tadi (app.ts). */
@@ -9,4 +10,5 @@ export const createApiRoutes =
   async (app) => {
     await app.register(healthRoutes);
     await app.register(foundationRoutes(container));
+    await app.register(internalRoutes(container.controllers.maintenance), { prefix: "/internal" });
   };
