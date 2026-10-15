@@ -97,7 +97,12 @@ export function createPrismaRepositories(prisma: PrismaClient): Repositories {
         where: (s) => (s.userId ? { userId: s.userId } : {}),
       }),
       async markAllRead(userId) {
-        await db.notification!.updateMany({ where: { userId, read: false }, data: { read: true } });
+        const r = await db.notification!.updateMany({ where: { userId, read: false }, data: { read: true } });
+        return r.count;
+      },
+      async markRead(userId, id) {
+        const r = await db.notification!.updateMany({ where: { id, userId }, data: { read: true } });
+        return r.count === 1;
       },
     },
     audit: {

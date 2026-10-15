@@ -194,7 +194,10 @@ export interface PaymentRepository extends ReadRepository<Payment> {
 }
 
 export interface NotificationRepository extends ReadRepository<Notification> {
-  markAllRead(userId: string): Promise<void>;
+  /** Foydalanuvchining o'qilmagan bildirishnomalarini o'qilgan qiladi, o'zgargan sonni qaytaradi. */
+  markAllRead(userId: string): Promise<number>;
+  /** Faqat shu foydalanuvchining bildirishnomasi; topilsa true. */
+  markRead(userId: string, id: string): Promise<boolean>;
 }
 
 /** Audit log faqat qo'shiladi (append-only): update va delete yo'q. */
