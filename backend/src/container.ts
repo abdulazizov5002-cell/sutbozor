@@ -5,6 +5,7 @@ import { disputeController } from "./controllers/dispute.controller";
 import { entityController } from "./controllers/entity.controller";
 import { orderController } from "./controllers/order.controller";
 import { paymentController } from "./controllers/payment.controller";
+import { userController } from "./controllers/user.controller";
 import { productController } from "./controllers/product.controller";
 import { notImplementedRepositories } from "./repositories/notImplemented";
 import type { Repositories } from "./repositories/ports";
@@ -28,7 +29,7 @@ export interface ContainerOptions {
 export function buildContainer(repositories: Repositories = notImplementedRepositories(), options: ContainerOptions = {}) {
   const services = createServices(repositories);
   const controllers = {
-    users: entityController(services.users),
+    users: userController(services.users),
     businesses: entityController(services.businesses),
     suppliers: entityController(services.suppliers),
     products: productController(services.products),

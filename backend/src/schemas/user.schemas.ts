@@ -5,7 +5,12 @@ import { email, optionalText, personName, phone, role, strictObject, uuid } from
 export const updateUserStatusBody = strictObject({
   status: z.enum(["ACTIVE", "BLOCKED"]),
   reason: optionalText(300),
+}).superRefine((v, ctx) => {
+  if (v.status === "BLOCKED" && v.reason.length < 3) {
+    ctx.addIssue({ code: "custom", path: ["reason"], message: "Bloklash sababini yozing (kamida 3 belgi)." });
+  }
 });
+export type UpdateUserStatusBody = z.infer<typeof updateUserStatusBody>;
 
 /** Yangi foydalanuvchi: rol bilan bog'lanish bazadagi CHECK constraint bilan bir xil (business->businessId, supplier->supplierId, admin->ikkalasisiz). */
 export const createUserBody = strictObject({

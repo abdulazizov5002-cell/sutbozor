@@ -10,6 +10,7 @@ import { entityRoutes } from "./entity.routes";
 import { orderRoutes } from "./orders.routes";
 import { disputeRoutes } from "./disputes.routes";
 import { paymentRoutes } from "./payments.routes";
+import { userRoutes } from "./users.routes";
 import { productRoutes } from "./products.routes";
 
 /** Entity'siz modul (auth, admin): hozircha GET / faqat 501 NOT_IMPLEMENTED qaytaradi. */
@@ -27,7 +28,7 @@ export const foundationRoutes =
   async (app) => {
     app.get("/", foundationController.index);
     const entities: Partial<Record<ApiModule, FastifyPluginAsync>> = {
-      users: entityRoutes(c.controllers.users),
+      users: userRoutes(c.controllers.users),
       businesses: entityRoutes(c.controllers.businesses),
       suppliers: entityRoutes(c.controllers.suppliers),
       products: productRoutes(c.controllers.products),

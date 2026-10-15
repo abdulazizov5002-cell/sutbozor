@@ -9,6 +9,7 @@ import { createOrderService } from "./order.service";
 import { createPaymentService } from "./payment.service";
 import { createProductService } from "./product.service";
 import { createScopedReadService } from "./scopedRead.service";
+import { createUserService } from "./user.service";
 
 /**
  * Entity servislari. O'qish hammasida (ruxsat + egalik bilan); yozish mahsulotlarda va buyurtmalarda.
@@ -16,7 +17,7 @@ import { createScopedReadService } from "./scopedRead.service";
  */
 export function createServices(r: Repositories) {
   return {
-    users: createScopedReadService({ repo: r.users, anyOf: ["users.manage"], scope: () => ({}), canAccess: () => true }),
+    users: createUserService(r.users),
     businesses: createScopedReadService({ repo: r.businesses, anyOf: ["businesses.view"], scope: () => ({}), canAccess: () => true }),
     suppliers: createScopedReadService({ repo: r.suppliers, anyOf: ["suppliers.view", "market.view"], scope: () => ({}), canAccess: () => true }),
     products: createProductService(r.products),
