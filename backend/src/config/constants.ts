@@ -80,4 +80,9 @@ export type NotificationType = (typeof NOTIFICATION_TYPES)[number];
 
 /** Mahsulotlar va qo'lda to'lov usullari (frontenddagi CAT va PaymentProviders.manual.methods bilan bir xil). */
 export const PRODUCT_NAMES = ["Sut", "Qatiq", "Qaymoq", "Suzma", "Tvorog", "Sariyog'"] as const;
+export type ProductName = (typeof PRODUCT_NAMES)[number];
+/** Birlik mahsulot nomidan serverda aniqlanadi (mijoz yubormaydi). Frontenddagi CAT bilan bir xil. */
+export const PRODUCT_UNITS = {
+  Sut: "L", Qatiq: "L", Qaymoq: "L", Suzma: "kg", Tvorog: "kg", "Sariyog'": "kg",
+} as const satisfies Record<ProductName, "L" | "kg">;
 export const PAYMENT_METHODS = ["Naqd", "Bank o'tkazmasi", "Karta → karta"] as const;

@@ -16,7 +16,7 @@ Hozir backend quyidagilarni qiladi:
 - **Validatsiya**: Zod sxemalari (params, query, body), noto'g'ri so'rovga `400 VALIDATION_ERROR`.
 - **Ruxsat tizimi**: `admin`, `business`, `supplier` rollari, ularning permissionlari va egalik qoidalari (boshqaning yozuvi uchun 404). Middleware: `requireAuth()`, `requireRole("ADMIN" | "BUSINESS" | "SUPPLIER")`, `requirePermission(...)`.
 - **Ma'lumotlar qatlami**: route -> controller -> service -> repository. Prisma/PostgreSQL implementatsiyasi yozilgan (13 model + Telegram hisobi), `DATABASE_URL` berilsa ulanadi.
-- **Faqat o'qish endpointlari**: ro'yxat va bitta yozuv (users, businesses, suppliers, products, orders, contracts, payments, disputes, notifications, admin audit log).
+- **Faqat o'qish endpointlari**: ro'yxat va bitta yozuv (users, businesses, suppliers, orders, contracts, payments, disputes, notifications, admin audit log).
 - **Xavfsiz log**: so'rov logi tana va sarlavhasiz, parol/token/Telegram initData/sirlar/to'lov rekvizitlari yashiriladi.
 - **Telegram kirishi**: initData HMAC bilan tekshiriladi, bog'langan foydalanuvchiga qisqa muddatli JWT beriladi (rol bazadan). Sirlar yo'q bo'lsa 501.
 
@@ -137,6 +137,7 @@ Barcha yo'llar `/api` prefiksi bilan. Qatlamlar: `route -> controller -> service
 |---|---|
 | `GET /api/health` | ishlaydi |
 | `GET /api` | modullar ro'yxati |
+| `POST /api/products`, `PATCH /api/products/:id`, `DELETE /api/products/:id` | ishlaydi: faqat supplier (`products.manage`) va faqat o'z mahsuloti (begonasi `404`). `supplierId` tokendan, birlik (L/kg) nomdan olinadi, narx musbat butun so'm. Har yozish audit yozuvi bilan bitta tranzaksiyada. Takror (supplier, nom) `409`. Mahsulot nomini o'zgartirib bo'lmaydi |
 | `GET /api/{users,suppliers,businesses,products,orders,contracts,payments,disputes,notifications}` va `/:id` | ulangan: autentifikatsiya + permission + egalik. token yo'q yoki yaroqsiz bo'lsa `401`; `JWT_SECRET` sozlanmagan bo'lsa `501 AUTH_NOT_CONFIGURED`; baza yo'q bo'lsa `501 NOT_IMPLEMENTED` |
 | `GET /api/admin/audit-logs` | faqat `ADMIN` roli + `audit.view` |
 | `GET /api/auth/me` | autentifikatsiya strategiyasi ulangach ishlaydi |
