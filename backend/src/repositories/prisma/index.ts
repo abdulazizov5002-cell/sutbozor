@@ -1,7 +1,9 @@
 import type { PrismaClient } from "@prisma/client";
-import type { ListParams, Page, ReadRepository, Repositories, Scope } from "../ports";
+import { conflict } from "../../utils/errors";
+import type { NewAuditLog } from "../../domain/entities";
+import type { ListParams, Page, ProductRepository, ReadRepository, Repositories, Scope } from "../ports";
 import {
-  mapAuditLog, mapBusiness, mapContract, mapDispute, mapNotification, mapOrder, mapPayment, mapProduct, mapSupplier, mapUser,
+  mapAuditLog, mapBusiness, mapContract, mapDispute, mapNotification, mapOrder, mapPayment, mapProduct, mapSupplier, mapUser, toBigInt,
 } from "./mappers";
 
 /** Prisma delegate'ining bizga kerak qismi (strukturaviy tur, har qanday model delegate'i mos keladi). */
@@ -52,10 +54,13 @@ export function createPrismaRepositories(prisma: PrismaClient): Repositories {
     users: readRepository({ delegate: db.user!, map: mapUser, orderBy: { createdAt: "asc" } }),
     businesses: readRepository({ delegate: db.business!, map: mapBusiness, orderBy: { name: "asc" } }),
     suppliers: readRepository({ delegate: db.supplier!, map: mapSupplier, orderBy: { name: "asc" } }),
-    products: readRepository({
-      delegate: db.product!, map: mapProduct, orderBy: { name: "asc" },
-      where: (s) => (s.supplierId ? { supplierId: s.supplierId } : {}),
-    }),
+    products: {
+      ...readRepository({
+        delegate: db.product!, map: mapProduct, orderBy: { name: "asc" },
+        where: (s) => (s.supplierId ? { supplierId: s.supplierId } : {}),
+      }),
+      ...productWrites(prisma),
+    },
     orders: readRepository({
       delegate: db.order!, map: mapOrder, include: { items: true }, orderBy: { createdAt: "desc" },
       where: (s) => ({
@@ -90,6 +95,71 @@ export function createPrismaRepositories(prisma: PrismaClient): Repositories {
         const { ts, ...rest } = entry;
         return mapAuditLog(await db.auditLog!.create({ data: { ...rest, ...(ts ? { ts: new Date(ts) } : {}) } }));
       },
+    },
+  };
+}
+
+/** Prisma xato kodi (klassni import qilmaymiz): P2002 unique buzilishi, P2025 yozuv topilmadi. */
+const prismaCode = (e: unknown): string | null =>
+  typeof e === "object" && e !== null && typeof (e as { code?: unknown }).code === "string" ? (e as { code: string }).code : null;
+
+const auditData = (a: NewAuditLog) => ({
+  actorId: a.actorId, actorName: a.actorName, actorRole: a.actorRole, action: a.action,
+  objectType: a.objectType, objectId: a.objectId, description: a.description,
+});
+
+/** Mahsulot yozish amallari: o'zgarish va audit yozuvi bitta tranzaksiyada (biri xato bersa hech biri saqlanmaydi). */
+function productWrites(prisma: PrismaClient): Pick<ProductRepository, "create" | "update" | "remove"> {
+  return {
+    async create(input, audit) {
+      try {
+        return await prisma.$transaction(async (tx) => {
+          const row = await tx.product.create({
+            data: {
+              supplierId: input.supplierId, name: input.name, unit: input.unit,
+              availableToday: input.availableToday, dailyCapacity: input.dailyCapacity, pricePerUnit: toBigInt(input.pricePerUnit),
+            },
+          });
+          const product = mapProduct(row);
+          await tx.auditLog.create({ data: auditData(audit(product)) });
+          return product;
+        });
+      } catch (e) {
+        if (prismaCode(e) === "P2002") throw conflict("Bu mahsulot allaqachon qo'shilgan. Mavjudini tahrirlang.");
+        throw e;
+      }
+    },
+    async update(id, patch, audit) {
+      try {
+        return await prisma.$transaction(async (tx) => {
+          const row = await tx.product.update({
+            where: { id },
+            data: {
+              ...(patch.availableToday !== undefined ? { availableToday: patch.availableToday } : {}),
+              ...(patch.dailyCapacity !== undefined ? { dailyCapacity: patch.dailyCapacity } : {}),
+              ...(patch.pricePerUnit !== undefined ? { pricePerUnit: toBigInt(patch.pricePerUnit) } : {}),
+            },
+          });
+          const product = mapProduct(row);
+          await tx.auditLog.create({ data: auditData(audit(product)) });
+          return product;
+        });
+      } catch (e) {
+        if (prismaCode(e) === "P2025") return null;
+        throw e;
+      }
+    },
+    async remove(id, audit) {
+      try {
+        return await prisma.$transaction(async (tx) => {
+          const product = mapProduct(await tx.product.delete({ where: { id } }));
+          await tx.auditLog.create({ data: auditData(audit(product)) });
+          return product;
+        });
+      } catch (e) {
+        if (prismaCode(e) === "P2025") return null;
+        throw e;
+      }
     },
   };
 }

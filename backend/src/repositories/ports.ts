@@ -37,7 +37,25 @@ export interface ReadRepository<T> {
 export type UserRepository = ReadRepository<User>;
 export type BusinessRepository = ReadRepository<Business>;
 export type SupplierRepository = ReadRepository<Supplier>;
-export type ProductRepository = ReadRepository<Product>;
+export interface NewProduct {
+  supplierId: string;
+  name: string;
+  unit: Product["unit"];
+  availableToday: number;
+  dailyCapacity: number;
+  pricePerUnit: Product["pricePerUnit"];
+}
+export type ProductPatch = Partial<Pick<Product, "availableToday" | "dailyCapacity" | "pricePerUnit">>;
+
+/**
+ * Mahsulot: o'qish + yozish. Har yozish audit yozuvi bilan BITTA tranzaksiyada (`audit` natijadan yozuv quradi).
+ * create: (supplierId, name) band bo'lsa 409 tashlaydi. update/remove: topilmasa null.
+ */
+export interface ProductRepository extends ReadRepository<Product> {
+  create(input: NewProduct, audit: (created: Product) => NewAuditLog): Promise<Product>;
+  update(id: string, patch: ProductPatch, audit: (updated: Product) => NewAuditLog): Promise<Product | null>;
+  remove(id: string, audit: (removed: Product) => NewAuditLog): Promise<Product | null>;
+}
 export type OrderRepository = ReadRepository<Order>; // Order items bilan birga (aggregate)
 export type ContractRepository = ReadRepository<Contract>;
 export type DisputeRepository = ReadRepository<Dispute>;

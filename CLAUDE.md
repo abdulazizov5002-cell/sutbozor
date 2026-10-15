@@ -70,11 +70,13 @@ PostgreSQL (Neon)
   |---|---|
   | `GET /api/health` | ishlaydi (o'ralmagan `{status, service}`, bazani tekshirmaydi) |
   | `GET /api` | modullar ro'yxati |
-  | `POST /api/auth/telegram`, `GET /api/auth/me` | ishlaydi |
-  | `GET /api/{users,businesses,suppliers,products,orders,contracts,payments,disputes,notifications}` va `/:id` | faqat o'qish, auth + permission + egalik |
+  | `POST /api/auth/telegram`, `POST /api/auth/register`, `GET /api/auth/me` | ishlaydi (register: rol faqat business\|supplier, holat serverdan, telefon majburiy, email ixtiyoriy) |
+  | `GET /api/{users,businesses,suppliers,orders,contracts,payments,disputes,notifications}` va `/:id` | faqat o'qish, auth + permission + egalik |
+  | `GET /api/products`, `/:id` | biznes bozorni, supplier o'zinikini ko'radi |
+  | `POST /api/products`, `PATCH /api/products/:id`, `DELETE /api/products/:id` | faqat supplier (`products.manage`), faqat o'z mahsuloti (begona -> 404); supplierId tokendan, birlik nomdan; audit bilan bitta tranzaksiyada |
   | `GET /api/admin/audit-logs` | faqat `ADMIN` + `audit.view` |
   | `GET /api/auth`, `GET /api/admin` | `501 NOT_IMPLEMENTED` |
-  Yozish endpointlari (buyurtma, to'lov, nizo va h.k.), ro'yxatdan o'tish, logout/refresh, admin login **hali yo'q**.
+  Yozish endpointlari (buyurtma, shartnoma, to'lov, nizo va h.k.), logout/refresh, admin login **hali yo'q**.
   Frontenddagi `adminLogin()` va `logout()` chaqiradigan yo'llar backendda mavjud emas.
 - Javob formati: `{ "success": true, "data": ... }` / `{ "success": false, "error": { code, message, details? } }`, har javobda `x-request-id`.
 - Validatsiya: Zod (`src/schemas`, `src/validation`), o'zbekcha xato matnlari, `strictObject` (ortiqcha `role`/`status` maydonlari rad etiladi).
@@ -97,7 +99,7 @@ PostgreSQL (Neon)
 cd backend
 npm ci
 npm run typecheck     # prisma generate + tsc --noEmit
-npm test              # contract, telegram, auth, rbac, logging, http (baza kerak emas)
+npm test              # contract, telegram, auth, register, products, rbac, logging, http (baza kerak emas)
 npm run check:secrets
 ```
 

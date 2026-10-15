@@ -26,7 +26,7 @@ export function createBearerStrategy(deps: { tokens: TokenService; users: UserLo
 
       const user = await deps.users.findById(payload.userId);
       if (!user) return null;
-      return { id: user.id, role: user.role, status: user.status, businessId: user.businessId, supplierId: user.supplierId };
+      return { id: user.id, name: user.name, role: user.role, status: user.status, businessId: user.businessId, supplierId: user.supplierId };
     },
   };
 }
