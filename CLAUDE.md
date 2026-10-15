@@ -60,6 +60,7 @@ PostgreSQL (Neon)
   statuslar, `PLATFORM_COMMISSION_PERCENT = 0` (env'dan olinmaydi), `CURRENCY = "UZS"`, `TIMEZONE = "Asia/Tashkent"`.
 - Fail-closed ulanish (`src/server.ts`): har qism faqat o'z sozlamasi bo'lsa yoqiladi.
   - `DATABASE_URL` yo'q -> entity endpointlari `501 NOT_IMPLEMENTED` (`repositories/notImplemented.ts`).
+  - Telegram bot orqali xabar (ixtiyoriy): `TELEGRAM_NOTIFICATIONS=true` bo'lsa va token/baza bor bo'lsa, yangi bildirishnoma COMMIT'dan keyin botga ham yuboriladi (`src/notify/telegramDelivery.ts`, `repositories/prisma/delivery.ts`). Standart o'chiq; xato amalni buzmaydi; faqat botni ochgan foydalanuvchi oladi.
   - `JWT_SECRET` yoki `TELEGRAM_BOT_TOKEN` yo'q -> Telegram kirishi `501`; Bearer strategiyasi ulanmasa himoyalangan route'lar `501 AUTH_NOT_CONFIGURED`.
 - Autentifikatsiya (ishlaydi): `POST /api/auth/telegram` faqat `{ initData }` qabul qiladi (strict). HMAC-SHA256 (`WebAppData`) + `auth_date` yangiligi ->
   `TelegramAccount` profili yangilanadi -> bog'lanmagan bo'lsa `403 ACCOUNT_NOT_LINKED` -> `User` bazadan, faol bo'lmasa `403` ->
@@ -97,7 +98,7 @@ PostgreSQL (Neon)
 - Birinchi admin qo'lda SQL bilan yaratiladi: `backend/docs/ADMIN_BOOTSTRAP.md`.
 
 ### Sirlar va muhit
-- Render env'da: `DATABASE_URL`, `JWT_SECRET` (>= 32 belgi), `TELEGRAM_BOT_TOKEN`, `CORS_ORIGIN`, `NODE_ENV=production`, `TRUST_PROXY` va boshqalar (`backend/.env.example` ro'yxati).
+- Render env'da: `DATABASE_URL`, `JWT_SECRET` (>= 32 belgi), `TELEGRAM_BOT_TOKEN`, `TELEGRAM_NOTIFICATIONS` (ixtiyoriy, `true` bilan yoqiladi), `CORS_ORIGIN`, `NODE_ENV=production`, `TRUST_PROXY` va boshqalar (`backend/.env.example` ro'yxati).
 - `.gitignore` (ildiz va `backend/`) `.env`, `.env.*` ni bloklaydi, `!.env.example` ruxsat.
 - Sir skaneri: `cd backend && npm run check:secrets`; pre-commit hook: `git config core.hooksPath .githooks`.
 - Repoda `render.yaml` yo'q: Render sozlamalari dashboard'da.

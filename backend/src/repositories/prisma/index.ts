@@ -1,6 +1,7 @@
 import type { PrismaClient } from "@prisma/client";
 import { conflict } from "../../utils/errors";
 import type { NewAuditLog } from "../../domain/entities";
+import { queueDelivery, withDelivery, type NotificationDelivery } from "./delivery";
 import { buildPaymentPlan, deliveryPayment, type PlannedPayment } from "../../domain/paymentPlan";
 import type { DisputeRepository, UserRepository, ListParams, NewNotification, OrderRepository, Page, PaymentRepository, ProductRepository, ReadRepository, Repositories, Recipient, Scope } from "../ports";
 import {
@@ -49,7 +50,9 @@ const party = (s: Scope) => ({
 });
 
 /** Prisma bilan ishlaydigan repository'lar. container/buildApp({ repositories }) ga beriladi. */
-export function createPrismaRepositories(prisma: PrismaClient): Repositories {
+export function createPrismaRepositories(base: PrismaClient, options: { delivery?: NotificationDelivery } = {}): Repositories {
+  // Bildirishnoma yaratilgan tranzaksiya COMMIT bo'lgandan keyin tashqi kanalga (Telegram) yetkaziladi; delivery bo'lmasa prisma o'zgarmaydi.
+  const prisma = withDelivery(base, options.delivery);
   const db = prisma as unknown as Record<string, Delegate & { updateMany(args: any): Promise<{ count: number }>; create(args: any): Promise<any> }>;
   return {
     users: {
@@ -195,6 +198,7 @@ async function notifyUsers(tx: any, where: ReturnType<typeof recipientWhere>, co
   await tx.notification.createMany({
     data: users.map((u) => ({ userId: u.id, type: content.type, title: content.title, message: content.message })),
   });
+  queueDelivery(tx, { userIds: users.map((u) => u.id), title: content.title, message: content.message });
 }
 
 /**

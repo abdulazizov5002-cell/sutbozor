@@ -71,7 +71,8 @@ Hammasi `src/config/env.ts` da Zod bilan tekshiriladi. Noto'g'ri qiymat bo'lsa s
 | `TRUST_PROXY` | `false` | Nginx/Cloudflare orqasida `true` qiling, aks holda limit noto'g'ri IP ko'radi |
 | `JWT_SECRET` | yo'q | Keyingi bosqichda majburiy bo'ladi. Kamida 32 belgi, tasodifiy |
 | `ACCESS_TOKEN_TTL_MIN` | `15` | Keyingi bosqich |
-| `TELEGRAM_BOT_TOKEN` | yo'q | Keyingi bosqich (initData tekshiruvi) |
+| `TELEGRAM_BOT_TOKEN` | yo'q | initData tekshiruvi va (yoqilsa) bot xabarlari |
+| `TELEGRAM_NOTIFICATIONS` | `false` | `true` bo'lsa yangi bildirishnomalar Telegram botga ham yuboriladi (token va baza majburiy) |
 | `TELEGRAM_INIT_DATA_MAX_AGE_SEC` | `86400` | initData eskirish muddati |
 
 Tasodifiy sir hosil qilish:
