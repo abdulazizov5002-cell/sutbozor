@@ -41,6 +41,7 @@ async function main(): Promise<void> {
     ...(telegramAccounts ? { telegramAccounts } : {}),
     ...(tokens ? { tokens } : {}),
     ...(registrations ? { registrations } : {}),
+    ...(env.CRON_SECRET ? { cronSecret: env.CRON_SECRET } : {}),
   });
   warn = (o, m) => app.log.warn(o, m);
   app.log.info({ telegramNotifications: Boolean(delivery) }, "bildirishnoma kanallari");

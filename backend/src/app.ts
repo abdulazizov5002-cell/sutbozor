@@ -25,6 +25,8 @@ export interface BuildAppOptions {
   tokens?: TokenService;
   /** Ro'yxatdan o'tish ombori (baza ulanganda). */
   registrations?: RegistrationStore;
+  /** Cron sirri (env CRON_SECRET). Berilmasa /api/internal/* 501. */
+  cronSecret?: string;
 }
 
 export async function buildApp(options: BuildAppOptions = {}): Promise<FastifyInstance> {
@@ -66,6 +68,7 @@ export async function buildApp(options: BuildAppOptions = {}): Promise<FastifyIn
     ...(options.telegramAccounts ? { telegramAccounts: options.telegramAccounts } : {}),
     ...(options.tokens ? { tokens: options.tokens } : {}),
     ...(options.registrations ? { registrations: options.registrations } : {}),
+    ...(options.cronSecret ? { cronSecret: options.cronSecret } : {}),
   })), { prefix: "/api" });
   return app;
 }

@@ -81,13 +81,7 @@ export function createPrismaRepositories(base: PrismaClient, options: { delivery
     contracts: readRepository({ delegate: db.contract!, map: mapContract, orderBy: { createdAt: "desc" }, where: party }),
     payments: {
       ...readRepository({ delegate: db.payment!, map: mapPayment, orderBy: { dueDate: "asc" }, where: party }),
-      async markOverdue(today) {
-        const r = await db.payment!.updateMany({
-          where: { status: "PENDING", dueDate: { lt: new Date(`${today}T00:00:00.000Z`) } },
-          data: { status: "OVERDUE" },
-        });
-        return r.count;
-      },
+      markOverdue: (today) => markOverduePayments(prisma, today),
       ...paymentWrites(prisma),
     },
     disputes: {
@@ -522,4 +516,36 @@ function ratingWrites(prisma: PrismaClient): RatingRepository {
       });
     },
   };
+}
+
+/**
+ * Muddati o'tgan PENDING to'lovlarni OVERDUE qiladi va har biri uchun xaridorga bildirishnoma + audit yozadi (bitta tranzaksiyada).
+ * `status: PENDING` sharti bilan yangilanadi: bir vaqtda ikki chaqiruv kelsa to'lov faqat bir marta o'tadi va bildirishnoma takrorlanmaydi.
+ * O'zgargan to'lovlar sonini qaytaradi.
+ */
+async function markOverduePayments(prisma: PrismaClient, today: string): Promise<number> {
+  return prisma.$transaction(async (tx: any) => {
+    const due = await tx.payment.findMany({
+      where: { status: "PENDING", dueDate: { lt: new Date(`${today}T00:00:00.000Z`) } },
+      select: { id: true, publicId: true, businessId: true, amount: true, dueDate: true },
+    });
+    let changed = 0;
+    for (const p of due) {
+      const r = await tx.payment.updateMany({ where: { id: p.id, status: "PENDING" }, data: { status: "OVERDUE" } });
+      if (r.count !== 1) continue;
+      changed++;
+      const amount = money(p.amount).toLocaleString("ru-RU").replace(/[\u00a0\u202f]/g, " ");
+      await tx.auditLog.create({
+        data: {
+          actorId: null, actorName: "Tizim", actorRole: "system", action: "payment.overdue", objectType: "payment", objectId: p.id,
+          description: `To'lov ${p.publicId}: muddati o'tdi (${p.dueDate.toISOString().slice(0, 10)})`,
+        },
+      });
+      await notifyUsers(tx, recipientWhere({ businessId: p.businessId }), {
+        type: "payment.overdue", title: "To'lov muddati o'tdi",
+        message: `${p.publicId} (${amount} so'm) to'lovi muddati o'tdi. Iltimos, supplierga to'lang va "To'lov qildim" deb yozing.`,
+      });
+    }
+    return changed;
+  });
 }

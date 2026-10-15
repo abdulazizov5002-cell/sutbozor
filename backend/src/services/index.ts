@@ -4,6 +4,7 @@ import {
 } from "../policies/ownership";
 import { createAuditService } from "./audit.service";
 import { createDisputeService } from "./dispute.service";
+import { createMaintenanceService } from "./maintenance.service";
 import { createNotificationService } from "./notification.service";
 import { createOrderService } from "./order.service";
 import { createPaymentService } from "./payment.service";
@@ -29,6 +30,7 @@ export function createServices(r: Repositories) {
     ratings: createRatingService({ ratings: r.ratings, orders: r.orders }),
     notifications: createNotificationService(r.notifications),
     audit: createAuditService(r.audit),
+    maintenance: createMaintenanceService({ payments: r.payments }),
   };
 }
 

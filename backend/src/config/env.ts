@@ -25,6 +25,8 @@ const schema = z
     // Autentifikatsiya sirlari: faqat muhit o'zgaruvchisida, kodda yo'q. Auth bosqichida majburiy qilinadi.
     JWT_SECRET: z.string().min(32, "JWT_SECRET kamida 32 belgi bo'lishi kerak.").optional(),
     ACCESS_TOKEN_TTL_MIN: z.coerce.number().int().min(1).max(1440).default(15),
+    /** Rejalashtirilgan ishlar (Render Cron Job) uchun umumiy sir: `x-cron-secret` sarlavhasi. Berilmasa /api/internal/* 501 (fail-closed). */
+    CRON_SECRET: z.string().min(32, "CRON_SECRET kamida 32 belgi bo'lishi kerak.").optional(),
     TELEGRAM_BOT_TOKEN: z.string().min(20, "TELEGRAM_BOT_TOKEN juda qisqa.").optional(),
     /** "true" bo'lsa yangi bildirishnomalar Telegram bot orqali ham yuboriladi (TELEGRAM_BOT_TOKEN va baza kerak). Standart: o'chiq. */
     TELEGRAM_NOTIFICATIONS: z
