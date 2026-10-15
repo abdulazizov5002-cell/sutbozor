@@ -78,6 +78,7 @@ pre.sc{background:var(--bg);border:1px solid var(--line);border-radius:10px;padd
 <div id="sord"></div>
 <div id="spay"></div>
 <div id="sdis"></div>
+<div id="snot"></div>
 </main>
 <div id="adis" hidden></div>
 <div id="adm" hidden></div>
@@ -95,6 +96,7 @@ pre.sc{background:var(--bg);border:1px solid var(--line);border-radius:10px;padd
 <script src="js/api/paymentService.js"></script>
 <script src="js/api/disputeService.js"></script>
 <script src="js/api/adminService.js"></script>
+<script src="js/api/notificationService.js"></script>
 <script src="js/api/index.js"></script>
 <script>
 const $=id=>document.getElementById(id);
@@ -915,12 +917,31 @@ function srvAdmin(api,box){
   const show=k=>{cur=k;TABS.forEach(t=>{pane(t[0]).hidden=t[0]!==k});mark();if(tabs[k])tabs[k].show()};
   box.addEventListener("click",e=>{const b=e.target.closest("[data-at]");if(b)show(b.dataset.at)});
   mark()}
+/* Serverdagi bildirishnomalar (GET /api/notifications, POST .../read). Server ularni buyurtma, to'lov va nizo amallarida o'zi yaratadi.
+   Faqat o'zinikini ko'radi. Telegramga yuborish hali yo'q: bu bo'lim ilovani ochganda ko'rinadi. Demo bo'limlar (localStorage) ta'sirlanmaydi. */
+function srvNotifications(api,box){
+  let list=[],total=0,msg="",busy=false,open=false,first=true;
+  const call=f=>(api.auth.isAuthenticated()?Promise.resolve():api.auth.loginWithTelegram()).then(f).catch(e=>{if(e&&e.status===401)return api.auth.loginWithTelegram().then(f);throw e});
+  const fail=e=>{busy=false;msg=e&&e.message?e.message:"Xato yuz berdi.";draw()};
+  const unread=()=>list.filter(n=>!n.read).length;
+  const when=s=>String(s||"").replace("T"," ").slice(0,16);
+  const row=n=>`<div class="row f" style="padding:6px 0"><div><b>${n.read?"":"● "}${esc(n.title)}</b><small style="display:block">${esc(n.message)}</small><small>${esc(when(n.createdAt))}</small></div>${n.read?"":`<button class="btn s" data-na="read" data-id="${n.id}"${busy?" disabled":""}>O'qidim</button>`}</div>`;
+  const draw=()=>{const u=unread();
+    box.innerHTML=`<div class="card"><h2>Bildirishnomalar${u?` (${u} ta yangi${total>list.length?"+":""})`:""}</h2>${open?`<p class="msg" role="alert">${esc(msg)}</p>${list.map(row).join("")||`<p class="hint">Hozircha bildirishnoma yo'q.</p>`}${total>list.length?`<p class="hint">Oxirgi ${list.length} tasi ko'rsatilmoqda (jami ${total}).</p>`:""}<div class="acts">${u?`<button class="btn s p" data-na="all"${busy?" disabled":""}>Hammasini o'qidim</button>`:""}<button class="btn s" data-na="reload"${busy?" disabled":""}>Yangilash</button><button class="btn s" data-na="toggle">Yopish</button></div>`:`<div class="acts"><button class="btn s" data-na="toggle">Ko'rsatish</button></div>`}</div>`};
+  const load=()=>{busy=true;draw();return call(()=>api.notifications.list({page:1,limit:30})).then(r=>{list=(r&&r.items)||[];total=(r&&r.total)||list.length;msg="";busy=false;if(first){first=false;open=unread()>0}draw()}).catch(fail)};
+  const run=(f)=>{busy=true;msg="";draw();call(f).then(()=>api.notifications.list({page:1,limit:30})).then(r=>{list=(r&&r.items)||[];total=(r&&r.total)||list.length;busy=false;draw()}).catch(fail)};
+  box.addEventListener("click",e=>{if(busy)return;const b=e.target.closest("[data-na]");if(!b)return;const a=b.dataset.na;
+    if(a==="toggle"){open=!open;draw()}else if(a==="reload")load();
+    else if(a==="read")run(()=>api.notifications.markRead(b.dataset.id));
+    else if(a==="all")run(()=>api.notifications.markAllRead())});
+  load()}
 /* Serverga kirgan foydalanuvchi: holat qatori + (supplier bo'lsa) mahsulotlar bo'limi. */
 function srvUser(api,el,u){el.textContent="Server: ulandi ("+u.role+")";if(u.role==="admin"&&!$("sord").dataset.on){$("sord").dataset.on="1";$("sord").innerHTML=`<div class="card"><h2>Admin</h2><p class="hint">Siz serverda ADMIN sifatida kirdingiz. Boshqaruv panelida serverdagi nizolar (hal qilish) birinchi bo'lib turadi; qolgan bo'limlar hozircha demo (brauzer xotirasi).</p><div class="acts"><a class="btn p" href="#admin">Admin panelni ochish</a></div></div>`}
   if(u.role==="supplier"&&!$("sprod").dataset.on){$("sprod").dataset.on="1";supProducts(api)}
   if((u.role==="supplier"||u.role==="business")&&!$("sord").dataset.on){$("sord").dataset.on="1";srvOrders(api,u.role)}
   if((u.role==="supplier"||u.role==="business")&&!$("spay").dataset.on){$("spay").dataset.on="1";srvPayments(api,u.role)}
-  if((u.role==="supplier"||u.role==="business")&&!$("sdis").dataset.on){$("sdis").dataset.on="1";srvDisputes(api,u.role,$("sdis"))}}
+  if((u.role==="supplier"||u.role==="business")&&!$("sdis").dataset.on){$("sdis").dataset.on="1";srvDisputes(api,u.role,$("sdis"))}
+  if((u.role==="supplier"||u.role==="business")&&!$("snot").dataset.on){$("snot").dataset.on="1";srvNotifications(api,$("snot"))}}
 /* Admin: server nizolari faqat server ADMIN rolini tasdiqlagandan keyin (#adis) ko'rinadi. */
 function admDis(){const el=$("adis"),api=srvApi(),on=isAdm()&&Auth.ctx==="admin"&&!!api;el.hidden=!on;if(on&&!el.dataset.on){el.dataset.on="1";srvAdmin(api,el)}}
 (function(){try{const el=$("srv"),api=srvApi();if(!el||!api)return;
