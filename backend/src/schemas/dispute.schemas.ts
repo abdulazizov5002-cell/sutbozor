@@ -5,6 +5,8 @@ export const openDisputeBody = strictObject({
   orderId: uuid,
   paymentId: uuid.optional(),
   contractId: uuid.optional(),
+  /** Biznes uchun: buyurtmada bir nechta supplier bo'lsa va to'lov/shartnoma ko'rsatilmasa, kim bilan nizo ekani. */
+  supplierId: uuid.optional(),
   reason: disputeReason,
   description: text(5, 1000),
 });

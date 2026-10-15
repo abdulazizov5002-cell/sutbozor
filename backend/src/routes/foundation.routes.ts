@@ -8,6 +8,7 @@ import { policies, routeLimit } from "../security/rateLimit";
 import { validate } from "../validation/validate";
 import { entityRoutes } from "./entity.routes";
 import { orderRoutes } from "./orders.routes";
+import { disputeRoutes } from "./disputes.routes";
 import { paymentRoutes } from "./payments.routes";
 import { productRoutes } from "./products.routes";
 
@@ -33,7 +34,7 @@ export const foundationRoutes =
       orders: orderRoutes(c.controllers.orders),
       contracts: entityRoutes(c.controllers.contracts),
       payments: paymentRoutes(c.controllers.payments),
-      disputes: entityRoutes(c.controllers.disputes),
+      disputes: disputeRoutes(c.controllers.disputes),
       notifications: entityRoutes(c.controllers.notifications),
     };
     for (const module of API_MODULES) {

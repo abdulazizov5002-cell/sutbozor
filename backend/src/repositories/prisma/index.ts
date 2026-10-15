@@ -2,7 +2,7 @@ import type { PrismaClient } from "@prisma/client";
 import { conflict } from "../../utils/errors";
 import type { NewAuditLog } from "../../domain/entities";
 import { buildPaymentPlan, deliveryPayment, type PlannedPayment } from "../../domain/paymentPlan";
-import type { ListParams, NewNotification, OrderRepository, Page, PaymentRepository, ProductRepository, ReadRepository, Repositories, Recipient, Scope } from "../ports";
+import type { DisputeRepository, ListParams, NewNotification, OrderRepository, Page, PaymentRepository, ProductRepository, ReadRepository, Repositories, Recipient, Scope } from "../ports";
 import {
   mapAuditLog, mapBusiness, mapContract, mapDispute, mapNotification, mapOrder, mapPayment, mapProduct, mapSupplier, mapUser, money, toBigInt,
 } from "./mappers";
@@ -84,7 +84,10 @@ export function createPrismaRepositories(prisma: PrismaClient): Repositories {
       },
       ...paymentWrites(prisma),
     },
-    disputes: readRepository({ delegate: db.dispute!, map: mapDispute, orderBy: { createdAt: "desc" }, where: party }),
+    disputes: {
+      ...readRepository({ delegate: db.dispute!, map: mapDispute, orderBy: { createdAt: "desc" }, where: party }),
+      ...disputeWrites(prisma),
+    },
     notifications: {
       ...readRepository({
         delegate: db.notification!, map: mapNotification, orderBy: { createdAt: "desc" },
@@ -172,6 +175,7 @@ function productWrites(prisma: PrismaClient): Pick<ProductRepository, "create" |
 /** Bildirishnoma oluvchilar: faqat FAOL foydalanuvchilar (bloklanganlarga yuborilmaydi). */
 const recipientWhere = (r: Recipient) => ({
   status: "ACTIVE" as const,
+  ...(r.admins ? { role: "admin" as const } : {}),
   ...(r.businessId ? { businessId: r.businessId } : {}),
   ...(r.supplierId ? { supplierId: r.supplierId } : {}),
 });
@@ -318,11 +322,11 @@ function orderWrites(prisma: PrismaClient): Pick<OrderRepository, "findOfferings
  * `count` ta raqam birdan band qilinadi, birinchisi qaytariladi. Birinchi yaratishda ikki so'rov to'qnashsa P2002 bo'ladi:
  * withSequenceRetry qayta urinadi.
  */
-async function nextNumbers(tx: any, name: "order" | "contract" | "payment", count: number): Promise<number> {
+async function nextNumbers(tx: any, name: "order" | "contract" | "payment" | "dispute", count: number): Promise<number> {
   const seq = await tx.sequence.upsert({ where: { name }, create: { name, value: 1000 + count }, update: { value: { increment: count } } });
   return (seq.value as number) - count + 1;
 }
-const nextNumber = (tx: any, name: "order" | "contract" | "payment"): Promise<number> => nextNumbers(tx, name, 1);
+const nextNumber = (tx: any, name: "order" | "contract" | "payment" | "dispute"): Promise<number> => nextNumbers(tx, name, 1);
 
 /** To'lov yozuvlari (faqat yozib borish): komissiya 0%, amount = grossAmount = supplierAmount (bazada CHECK ham bor). */
 async function createPayments(
@@ -375,6 +379,63 @@ function paymentWrites(prisma: PrismaClient): Pick<PaymentRepository, "transitio
         if (prismaCode(e) === "P2002") throw conflict("Bu tranzaksiya raqami allaqachon boshqa to'lov uchun ishlatilgan.");
         throw e;
       }
+    },
+  };
+}
+
+/**
+ * Nizolar (F bosqichi). Ochish: DS-<n> raqami, audit va bildirishnomalar bitta tranzaksiyada; bir xil (buyurtma, supplier, to'lov)
+ * bo'yicha ochiq nizo bo'lsa 409. Holat o'tkazish: updateMany `status in from` sharti bilan (poyga holatida ikkinchi so'rov null oladi).
+ */
+function disputeWrites(prisma: PrismaClient): Pick<DisputeRepository, "create" | "transition"> {
+  return {
+    async create(input, hooks) {
+      return withSequenceRetry(() =>
+        prisma.$transaction(async (tx: any) => {
+          const open = await tx.dispute.findFirst({
+            where: {
+              orderId: input.orderId, supplierId: input.supplierId, paymentId: input.paymentId, status: { in: ["OPEN", "UNDER_REVIEW"] },
+            },
+            select: { id: true },
+          });
+          if (open) throw conflict("Bu masala bo'yicha nizo allaqachon ochilgan va hali hal qilinmagan.");
+          const n = await nextNumber(tx, "dispute");
+          const row = await tx.dispute.create({
+            data: {
+              publicId: `DS-${n}`, orderId: input.orderId, paymentId: input.paymentId, contractId: input.contractId,
+              openedBy: input.openedBy, openedById: input.openedById, businessId: input.businessId, supplierId: input.supplierId,
+              reason: input.reason, description: input.description,
+            },
+          });
+          const dispute = mapDispute(row);
+          await tx.auditLog.create({ data: auditData(hooks.audit(dispute)) });
+          const content = hooks.notify(dispute);
+          for (const r of hooks.recipients) await notifyUsers(tx, recipientWhere(r), content);
+          return dispute;
+        }),
+      );
+    },
+    async transition(input, hooks) {
+      return prisma.$transaction(async (tx: any) => {
+        const decided = input.to === "RESOLVED" || input.to === "REJECTED";
+        const changed = await tx.dispute.updateMany({
+          where: { id: input.id, status: { in: input.from } },
+          data: {
+            status: input.to,
+            ...(input.resolution !== undefined ? { resolution: input.resolution } : {}),
+            ...(input.resolvedBy !== undefined ? { resolvedBy: input.resolvedBy } : {}),
+            ...(decided ? { resolvedAt: new Date() } : {}),
+          },
+        });
+        if (changed.count !== 1) return null;
+        const row = await tx.dispute.findUnique({ where: { id: input.id } });
+        if (!row) return null;
+        const dispute = mapDispute(row);
+        await tx.auditLog.create({ data: auditData(hooks.audit(dispute)) });
+        const content = hooks.notify(dispute);
+        for (const r of hooks.recipients) await notifyUsers(tx, recipientWhere(r), content);
+        return dispute;
+      });
     },
   };
 }
