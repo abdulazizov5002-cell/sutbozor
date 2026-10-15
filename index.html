@@ -77,8 +77,10 @@ pre.sc{background:var(--bg);border:1px solid var(--line);border-radius:10px;padd
 <div id="sprod"></div>
 <div id="sord"></div>
 <div id="spay"></div>
+<div id="sdis"></div>
 </main>
 <div id="adm" hidden></div>
+<div id="adis" hidden></div>
 <!-- Telegram Mini App kutubxonasi (initData beradi). Telegramdan tashqarida ham sahifa avvalgidek ishlaydi. -->
 <script src="https://telegram.org/js/telegram-web-app.js"></script>
 <!-- Backend integratsiya qatlami (env.js da useBackend=false bo'lsa ishlatilmaydi). Fayllar topilmasa sahifa avvalgidek ishlaydi. -->
@@ -91,6 +93,7 @@ pre.sc{background:var(--bg);border:1px solid var(--line);border-radius:10px;padd
 <script src="js/api/orderService.js"></script>
 <script src="js/api/contractService.js"></script>
 <script src="js/api/paymentService.js"></script>
+<script src="js/api/disputeService.js"></script>
 <script src="js/api/index.js"></script>
 <script>
 const $=id=>document.getElementById(id);
@@ -664,7 +667,7 @@ function admVerify(){
     if(u&&u.role==="admin"&&u.status==="ACTIVE"){ADM=u;ADMS={st:"ok",msg:""};audit("Admin (server)","admin","admin.login","session",String(u.id),"Admin server roli bilan kirdi");save()}
     else ADMS={st:"fail",msg:"Server rolingiz ADMIN emas yoki hisob faol emas. Admin panel yopiq."};
   }).catch(e=>{if(n!==ADMN)return;ADMS={st:"fail",msg:"Server: "+(e&&e.code?e.code:"xato")+(e&&e.message?" - "+e.message:"")}})
-  .then(()=>{if(n===ADMN&&Auth.ctx==="admin")admRender()});
+  .then(()=>{if(n===ADMN&&Auth.ctx==="admin"){admRender();admDis()}});
 }
 $("adm").addEventListener("click",e=>{
   const v=e.target.closest("[data-v]");if(v){AV=v.dataset.v;admRender();return}
@@ -674,7 +677,7 @@ $("adm").addEventListener("click",e=>{
   else{try{AERR="";adminAct(b.dataset.a,b.dataset)}catch(x){AERR=x.message}save();admRender()}
 });
 $("adm").addEventListener("change",e=>{if(e.target.id==="af"){AF=e.target.value;admRender()}else if(e.target.id==="apf"){APF=e.target.value;admRender()}});
-function route(){const ad=location.hash==="#admin";Auth.ctx=ad?"admin":"app";if(ad){ADM=null;ADMS={st:"idle",msg:""}}document.querySelector("main").hidden=ad;$("adm").hidden=!ad;document.title=ad?"SutBozor Admin":"SutBozor";if(ad)admRender();else render()}
+function route(){const ad=location.hash==="#admin";Auth.ctx=ad?"admin":"app";if(ad){ADM=null;ADMS={st:"idle",msg:""}}document.querySelector("main").hidden=ad;$("adm").hidden=!ad;$("adis").hidden=true;document.title=ad?"SutBozor Admin":"SutBozor";if(ad)admRender();else render()}
 addEventListener("hashchange",route);
 // Server bilan ulanish: faqat env.js da useBackend=true bo'lganda. Demo (localStorage) ishlashiga ta'sir qilmaydi.
 // Token faqat xotirada. Rol serverdan keladi, bu yerda faqat holat ko'rsatiladi (haqiqiy ruxsat serverda tekshiriladi).
@@ -815,10 +818,60 @@ function srvPayments(api,role){
     else if(a==="confirm")run(()=>api.payments.confirm(id),"Pul kelgani tasdiqlandi.");
     else if(a==="reject"){const r=RJ.reason.trim();if(r.length<3){msg="Sababni yozing (kamida 3 belgi).";draw();return}run(()=>api.payments.reject(id,r),"Pul kelmagani yozildi. Xaridor qayta yuborishi mumkin.")}});
   load()}
+/* Serverdagi nizolar (POST /api/disputes, POST /api/disputes/:id). Biznes/supplier o'z to'lovi yoki buyurtmasi bo'yicha nizo ochadi, admin
+   ko'rib chiqadi va hal qiladi. Nizo pul harakati qilmaydi va to'lov holatini o'zgartirmaydi: SutBozor pul ushlab turmaydi, faqat qaror yoziladi.
+   Admin ko'rinishi (role "admin") faqat server tasdiqlagan ADMIN uchun #adis da ochiladi. Demo bo'limlar (localStorage) ta'sirlanmaydi. */
+function srvDisputes(api,role,box){
+  const adm=role==="admin",biz=role==="business",RS={NOT_DELIVERED:"Yetkazilmadi",WRONG_QTY:"Miqdor noto'g'ri",QUALITY:"Sifat muammosi",PAYMENT:"To'lov masalasi",LATE:"Kechikdi",PRICE:"Narx",OTHER:"Boshqa"},
+    ST={OPEN:["Ochiq","w"],UNDER_REVIEW:["Ko'rib chiqilmoqda","w"],RESOLVED:["Hal qilindi",""],REJECTED:["Rad etildi","x"],CLOSED:["Yopildi","n"]};
+  const FM={open:false,target:"",reason:"PAYMENT",desc:""},AX={id:"",status:"",text:""};
+  let list=[],targets=[],msg="",ok="",busy=false;
+  const call=f=>(api.auth.isAuthenticated()?Promise.resolve():api.auth.loginWithTelegram()).then(f).catch(e=>{if(e&&e.status===401)return api.auth.loginWithTelegram().then(f);throw e});
+  const fail=e=>{busy=false;ok="";msg=e&&e.message?e.message:"Xato yuz berdi.";draw()};
+  const money=n=>Number(n).toLocaleString("ru-RU").replace(/ /g," ");
+  const row=d=>{const st=ST[d.status]||[d.status,"n"],asking=AX.id===d.id,by=d.openedBy==="business"?"Biznes":"Supplier";
+    const GO=(s,label,cls)=>`<button class="btn s ${cls||"p"}" data-da="now" data-id="${d.id}" data-st="${s}"${busy?" disabled":""}>${label}</button>`,ASK=(s,label,cls)=>`<button class="btn s ${cls||"p"}" data-da="ask" data-id="${d.id}" data-st="${s}">${label}</button>`;
+    let acts="";
+    if(adm){if(asking)acts=`<div class="acts"><input type="text" maxlength="1000" placeholder="Qaror matni (kamida 3 belgi)" data-dr="1" value="${esc(AX.text)}" style="flex:1;min-width:140px"><button class="btn s p" data-da="go"${busy?" disabled":""}>Tasdiqlash</button><button class="btn s" data-da="no">Yo'q</button></div>`;
+      else if(d.status==="OPEN")acts=`<div class="acts">${GO("UNDER_REVIEW","Ko'rib chiqish")}${ASK("RESOLVED","Hal qilish")}${ASK("REJECTED","Rad etish","d")}</div>`;
+      else if(d.status==="UNDER_REVIEW")acts=`<div class="acts">${ASK("RESOLVED","Hal qilish")}${ASK("REJECTED","Rad etish","d")}</div>`;
+      else if(d.status==="RESOLVED"||d.status==="REJECTED")acts=`<div class="acts">${GO("CLOSED","Yopish","")}</div>`}
+    return `<div class="row f" style="padding:6px 0"><div><b>${esc(d.publicId)} · ${esc(RS[d.reason]||d.reason)}</b><small>${esc(by)} ochdi · ${esc((d.createdAt||"").slice(0,10))}</small><small style="display:block">${esc(d.description)}</small>${d.resolution?`<small style="display:block">Qaror: ${esc(d.resolution)}</small>`:""}</div><span class="tag ${st[1]}">${esc(st[0])}</span></div>${acts}`};
+  const form=()=>!FM.open?`<div class="acts"><button class="btn s p" data-da="new"${busy||!targets.length?" disabled":""}>Nizo ochish</button></div>${targets.length?"":`<p class="hint">Nizo ochish uchun avval buyurtma yoki to'lov bo'lishi kerak.</p>`}`
+    :`<h3 style="font-size:16px;margin:8px 0 2px">Yangi nizo</h3><div class="grid"><label>Nima bo'yicha<select data-df="target">${targets.map(x=>`<option value="${esc(x.k)}"${x.k===FM.target?" selected":""}>${esc(x.label)}</option>`).join("")}</select></label><label>Sabab<select data-df="reason">${Object.keys(RS).map(k=>`<option value="${k}"${k===FM.reason?" selected":""}>${esc(RS[k])}</option>`).join("")}</select></label></div><label>Nima bo'ldi? (kamida 5 belgi)<textarea rows="3" maxlength="1000" data-df="desc">${esc(FM.desc)}</textarea></label><div class="acts"><button class="btn s p" data-da="send"${busy?" disabled":""}>Yuborish</button><button class="btn s" data-da="close">Yopish</button></div>`;
+  const draw=()=>{const act=document.activeElement&&document.activeElement.dataset&&document.activeElement.dataset.dr;
+    box.innerHTML=`<div class="card"><h2>${adm?"Nizolar (server, admin)":biz?"Nizolarim (server)":"Nizolar (server)"}</h2><p class="hint">Nizo faqat qaror uchun yozuv: pul SutBozor orqali o'tmaydi va to'lov holati o'zgarmaydi.</p>${adm?"":form()}<p class="msg" role="alert">${esc(msg)}</p>${ok?`<p class="hint" style="color:var(--acc)">${esc(ok)}</p>`:""}${list.map(row).join("")||`<p class="hint">Hozircha nizo yo'q.</p>`}<div class="acts"><button class="btn s" data-da="reload"${busy?" disabled":""}>Yangilash</button></div></div>`;
+    if(act){const el=box.querySelector("[data-dr]");if(el){el.focus();el.setSelectionRange(el.value.length,el.value.length)}}};
+  const loadList=()=>api.disputes.list({page:1,limit:50}).then(r=>{list=(r&&r.items)||[]});
+  const loadTargets=()=>adm?Promise.resolve():Promise.all([api.payments.list({page:1,limit:100}),api.orders.list({page:1,limit:50}),biz?api.suppliers.list({page:1,limit:100}).catch(()=>({items:[]})):null]).then(a=>{
+    const sn={};((a[2]&&a[2].items)||[]).forEach(s=>sn[s.id]=s.name);targets=[];
+    ((a[0]&&a[0].items)||[]).forEach(p=>targets.push({k:"p:"+p.id,label:"To'lov "+p.publicId+" · "+money(p.amount)+" so'm",body:{orderId:p.orderId,paymentId:p.id}}));
+    ((a[1]&&a[1].items)||[]).forEach(o=>{const seen={};(o.items||[]).forEach(i=>{const sk=biz?i.supplierId:"-";if(seen[sk])return;seen[sk]=1;targets.push({k:"o:"+o.id+(biz?":"+i.supplierId:""),label:"Buyurtma "+o.publicId+" · "+o.product+(biz?" · "+(sn[i.supplierId]||"Supplier"):""),body:biz?{orderId:o.id,supplierId:i.supplierId}:{orderId:o.id}})})});
+    if(!targets.some(x=>x.k===FM.target))FM.target=targets.length?targets[0].k:""});
+  const load=()=>{busy=true;draw();return call(()=>Promise.all([loadList(),loadTargets()])).then(()=>{busy=false;draw()}).catch(fail)};
+  const run=(f,done)=>{busy=true;msg="";ok="";draw();call(f).then(()=>{ok=done;return loadList()}).then(()=>{busy=false;draw()}).catch(e=>{loadList().catch(()=>{}).then(()=>fail(e))})};
+  const send=()=>{const t=targets.find(x=>x.k===FM.target),d=FM.desc.trim();
+    if(!t){msg="Nima bo'yicha nizo ekanini tanlang.";draw();return}
+    if(d.length<5){msg="Nima bo'lganini yozing (kamida 5 belgi).";draw();return}
+    run(()=>api.disputes.open(Object.assign({reason:FM.reason,description:d},t.body)),"Nizo yuborildi. Admin ko'rib chiqadi.");
+    FM.open=false;FM.desc=""};
+  const go=(id,status,text)=>{if((status==="RESOLVED"||status==="REJECTED")&&String(text||"").trim().length<3){msg="Qaror matnini yozing (kamida 3 belgi).";draw();return}
+    AX.id="";run(()=>api.disputes.setStatus(id,status,String(text||"").trim()),{UNDER_REVIEW:"Ko'rib chiqilmoqda.",RESOLVED:"Hal qilindi.",REJECTED:"Rad etildi.",CLOSED:"Yopildi."}[status])};
+  box.addEventListener("input",e=>{const d=e.target&&e.target.dataset;if(!d)return;if(d.df)FM[d.df]=e.target.value;else if(d.dr)AX.text=e.target.value});
+  box.addEventListener("click",e=>{if(busy)return;const b=e.target.closest("[data-da]");if(!b)return;const a=b.dataset.da;
+    if(a==="reload")load();else if(a==="new"){FM.open=true;FM.desc="";msg="";ok="";draw()}else if(a==="close"){FM.open=false;draw()}
+    else if(a==="send")send();else if(a==="no"){AX.id="";draw()}
+    else if(a==="ask"){AX.id=b.dataset.id;AX.status=b.dataset.st;AX.text="";msg="";draw()}
+    else if(a==="now")go(b.dataset.id,b.dataset.st,"");
+    else if(a==="go")go(AX.id,AX.status,AX.text)});
+  load()}
 /* Serverga kirgan foydalanuvchi: holat qatori + (supplier bo'lsa) mahsulotlar bo'limi. */
 function srvUser(api,el,u){el.textContent="Server: ulandi ("+u.role+")";if(u.role==="supplier"&&!$("sprod").dataset.on){$("sprod").dataset.on="1";supProducts(api)}
   if((u.role==="supplier"||u.role==="business")&&!$("sord").dataset.on){$("sord").dataset.on="1";srvOrders(api,u.role)}
-  if((u.role==="supplier"||u.role==="business")&&!$("spay").dataset.on){$("spay").dataset.on="1";srvPayments(api,u.role)}}
+  if((u.role==="supplier"||u.role==="business")&&!$("spay").dataset.on){$("spay").dataset.on="1";srvPayments(api,u.role)}
+  if((u.role==="supplier"||u.role==="business")&&!$("sdis").dataset.on){$("sdis").dataset.on="1";srvDisputes(api,u.role,$("sdis"))}}
+/* Admin: server nizolari faqat server ADMIN rolini tasdiqlagandan keyin (#adis) ko'rinadi. */
+function admDis(){const el=$("adis"),api=srvApi(),on=isAdm()&&Auth.ctx==="admin"&&!!api;el.hidden=!on;if(on&&!el.dataset.on){el.dataset.on="1";srvDisputes(api,"admin",el)}}
 (function(){try{const el=$("srv"),api=srvApi();if(!el||!api)return;
 const tg=window.Telegram&&window.Telegram.WebApp;try{if(tg&&tg.ready)tg.ready()}catch(x){}
 el.textContent="Server bilan ulanmoqda…";
