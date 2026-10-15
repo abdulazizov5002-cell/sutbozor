@@ -3,7 +3,7 @@ import { API_MODULES, type ApiModule } from "../config/constants";
 import type { Container } from "../container";
 import { foundationController } from "../controllers/foundation.controller";
 import { requireAuth, requireRole } from "../middleware/auth";
-import { telegramLoginBody } from "../schemas/auth.schemas";
+import { registerBody, telegramLoginBody } from "../schemas/auth.schemas";
 import { policies, routeLimit } from "../security/rateLimit";
 import { validate } from "../validation/validate";
 import { entityRoutes } from "./entity.routes";
@@ -53,6 +53,12 @@ export const foundationRoutes =
             "/telegram",
             { bodyLimit: 8192, config: routeLimit(policies.auth), preHandler: validate({ body: telegramLoginBody }) },
             c.controllers.auth.telegramLogin,
+          );
+          // Ro'yxatdan o'tish ommaviy (initData bilan): qattiq limit, kichik body, strict body.
+          a.post(
+            "/register",
+            { bodyLimit: 8192, config: routeLimit(policies.auth), preHandler: validate({ body: registerBody }) },
+            c.controllers.auth.register,
           );
         };
         await app.register(moduleRoutes(module, me), { prefix: `/${module}` });

@@ -1,3 +1,4 @@
+import type { UserStatus } from "../config/constants";
 import type { TelegramAccount, User } from "../domain/entities";
 import type { UntrustedTelegramInitData, VerifiedTelegramIdentity } from "./telegram/types";
 
@@ -51,4 +52,27 @@ export interface TelegramAccountStore {
 
 export interface UserLookup {
   findById(id: string): Promise<User | null>;
+}
+
+interface RegistrationCommon {
+  /** Tasdiqlangan initData'dan upsertProfile qaytargan hisob. Foydalanuvchi shu hisobga bog'lanadi. */
+  telegramAccountId: string;
+  name: string;
+  phone: string;
+  email: string | null;
+  status: UserStatus;
+}
+
+export type NewRegistration = RegistrationCommon &
+  (
+    | { role: "business"; organization: { name: string; type: string; area: string; address: string } }
+    | { role: "supplier"; organization: { name: string; area: string; deliveryRadiusKm: number } }
+  );
+
+/**
+ * Ro'yxatdan o'tish: tashkilot (Business/Supplier), User va Telegram hisobiga bog'lash BITTA tranzaksiyada.
+ * Telefon/email band bo'lsa yoki hisob allaqachon bog'langan bo'lsa 409 (AppError) tashlaydi va hech narsa yozilmaydi.
+ */
+export interface RegistrationStore {
+  register(input: NewRegistration): Promise<User>;
 }

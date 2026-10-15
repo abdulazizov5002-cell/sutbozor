@@ -140,7 +140,8 @@ Barcha yo'llar `/api` prefiksi bilan. Qatlamlar: `route -> controller -> service
 | `GET /api/{users,suppliers,businesses,products,orders,contracts,payments,disputes,notifications}` va `/:id` | ulangan: autentifikatsiya + permission + egalik. token yo'q yoki yaroqsiz bo'lsa `401`; `JWT_SECRET` sozlanmagan bo'lsa `501 AUTH_NOT_CONFIGURED`; baza yo'q bo'lsa `501 NOT_IMPLEMENTED` |
 | `GET /api/admin/audit-logs` | faqat `ADMIN` roli + `audit.view` |
 | `GET /api/auth/me` | autentifikatsiya strategiyasi ulangach ishlaydi |
-| `POST /api/auth/telegram` | tayyorlov: tuzilma tekshiriladi, keyin `501` (token berilmaydi) |
+| `POST /api/auth/telegram` | ishlaydi: initData HMAC tekshiruvi, bog'langan faol foydalanuvchiga token |
+| `POST /api/auth/register` | ishlaydi: `{initData, role: business\|supplier, name, phone, email?, organization}`; tashkilot + foydalanuvchi + Telegram bog'lash bitta tranzaksiyada; `201` va token; telefon/email band bo'lsa `409` |
 | `GET /api/auth`, `GET /api/admin` | `501 NOT_IMPLEMENTED` |
 
 Javob formati:
@@ -217,7 +218,10 @@ Qoidalar: pul `BigInt` (butun so'm), API'da `number`; komissiya 0% bazada CHECK 
 Yoqish uchun uchta narsa kerak: `DATABASE_URL`, `TELEGRAM_BOT_TOKEN`, `JWT_SECRET`. Biri yo'q bo'lsa tegishli qism fail-closed qoladi (501), server ishga tushadi.
 
 **Keyingi bosqichlar (hali yo'q):**
-- Ro'yxatdan o'tish: Business/Supplier o'zi hisob yaratishi (rolni foydalanuvchi tanlaydi, `admin` esa hech qachon o'zi tanlanmaydi), admin tasdiqlashi. Hozircha birinchi admin qo'lda yaratiladi (`docs/ADMIN_BOOTSTRAP.md`).
+- Ro'yxatdan o'tish (`POST /api/auth/register`) tayyor. Qoidalar: rol faqat `business`/`supplier` (`admin` tanlab bo'lmaydi), kimlik faqat tasdiqlangan initData'dan, holat serverdan (`REGISTRATION_INITIAL_STATUS` = `ACTIVE`, qaror: admin tasdiqlamaydi), telefon majburiy va unique, email ixtiyoriy.
+  **Ma'lum cheklov:** telefon raqami tasdiqlanmaydi (SMS/Telegram kontakt yo'q), shuning uchun kimdir boshqaning raqami bilan ro'yxatdan o'tib, uni band qilib qo'yishi mumkin. Pilotdan oldin: admin tasdiqlashi (`PENDING` + admin endpointlari) yoki Telegram kontakt orqali tasdiqlash qo'shiladi.
+  **Migratsiya:** `20261015000000_user_email_optional` (`users.email` NULL ruxsat). Yangi kod chiqishidan oldin qo'llang: `npx prisma migrate deploy` yoki Neon SQL Editor'da `ALTER TABLE "users" ALTER COLUMN "email" DROP NOT NULL;` (qayta bajarilsa xavfsiz).
+- Birinchi admin qo'lda yaratiladi (`docs/ADMIN_BOOTSTRAP.md`); admin hech qachon ro'yxatdan o'tish orqali yaratilmaydi.
 - Frontend: admin panel server roliga bog'langan (bajarildi). Qolgani: biznes/supplier ko'rinishlarini API ma'lumotiga o'tkazish (`docs/SECURITY.md`).
 - Sessiyani bekor qilish (logout): sessiya jadvali qo'shilgach. Hozircha token 15 daqiqada tugaydi, bloklash esa darhol ishlaydi.
 - Admin uchun alohida kirish (argon2id parol, 2FA).

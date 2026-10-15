@@ -22,6 +22,13 @@ export type RoleName = keyof typeof ROLE_NAMES;
 export const USER_STATUSES = ["ACTIVE", "BLOCKED", "PENDING"] as const;
 export type UserStatus = (typeof USER_STATUSES)[number];
 
+/**
+ * Yangi ro'yxatdan o'tgan hisobning boshlang'ich holati. Qaror: avtomatik faol (admin tasdiqlamaydi).
+ * Telefon raqami tasdiqlanmaydi, shuning uchun soxta hisoblar ochilishi mumkin. Admin tasdiqlashini yoqish uchun "PENDING" qilinadi
+ * (login PENDING'ga 403 beradi), lekin admin tasdiqlash endpointlari ham qo'shilishi shart.
+ */
+export const REGISTRATION_INITIAL_STATUS: UserStatus = "ACTIVE";
+
 export const PERMISSIONS = {
   admin: [
     "dashboard.view", "orders.view", "payments.view", "payments.manage", "contracts.view", "contracts.manage",

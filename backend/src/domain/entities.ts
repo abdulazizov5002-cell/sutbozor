@@ -16,7 +16,8 @@ export interface User {
   id: string;
   name: string;
   phone: string;
-  email: string;
+  /** Ixtiyoriy: ro'yxatdan o'tishda faqat telefon majburiy (Postgres'da bir nechta NULL unique'ga to'sqinlik qilmaydi). */
+  email: string | null;
   role: Role;
   businessId: string | null;
   supplierId: string | null;
