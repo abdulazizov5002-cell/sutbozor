@@ -19,6 +19,7 @@ export const notImplementedRepositories = (): Repositories => ({
   contracts: stub("contracts"),
   payments: stub("payments"),
   disputes: stub("disputes"),
+  ratings: stub("ratings"),
   notifications: stub("notifications"),
   audit: stub("audit"),
 });

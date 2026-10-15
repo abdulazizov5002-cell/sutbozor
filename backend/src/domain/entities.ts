@@ -193,3 +193,14 @@ export interface TelegramAccount {
   firstSeenAt: ISODateTime;
   lastLoginAt: ISODateTime | null;
 }
+
+/** Baho: yakunlangan buyurtma qismi uchun har tomon bir marta (TO_SUPPLIER: biznes -> supplier, TO_BUSINESS: supplier -> biznes). */
+export interface Rating {
+  id: string;
+  orderItemId: string;
+  side: "TO_SUPPLIER" | "TO_BUSINESS";
+  /** 1..5 (bazada scores.overall). */
+  score: number;
+  comment: string;
+  createdAt: ISODateTime;
+}

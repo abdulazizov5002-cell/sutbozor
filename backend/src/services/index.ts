@@ -7,6 +7,7 @@ import { createDisputeService } from "./dispute.service";
 import { createNotificationService } from "./notification.service";
 import { createOrderService } from "./order.service";
 import { createPaymentService } from "./payment.service";
+import { createRatingService } from "./rating.service";
 import { createProductService } from "./product.service";
 import { createScopedReadService } from "./scopedRead.service";
 import { createUserService } from "./user.service";
@@ -25,6 +26,7 @@ export function createServices(r: Repositories) {
     contracts: createScopedReadService({ repo: r.contracts, anyOf: ["contracts.view", "contracts.create"], scope: ownerScope, canAccess: canAccessContract }),
     payments: createPaymentService(r.payments),
     disputes: createDisputeService({ disputes: r.disputes, orders: r.orders, payments: r.payments, contracts: r.contracts }),
+    ratings: createRatingService({ ratings: r.ratings, orders: r.orders }),
     notifications: createNotificationService(r.notifications),
     audit: createAuditService(r.audit),
   };

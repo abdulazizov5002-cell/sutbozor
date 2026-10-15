@@ -9,6 +9,7 @@ import { validate } from "../validation/validate";
 import { entityRoutes } from "./entity.routes";
 import { orderRoutes } from "./orders.routes";
 import { disputeRoutes } from "./disputes.routes";
+import { ratingRoutes } from "./ratings.routes";
 import { notificationRoutes } from "./notifications.routes";
 import { paymentRoutes } from "./payments.routes";
 import { userRoutes } from "./users.routes";
@@ -37,6 +38,7 @@ export const foundationRoutes =
       contracts: entityRoutes(c.controllers.contracts),
       payments: paymentRoutes(c.controllers.payments),
       disputes: disputeRoutes(c.controllers.disputes),
+      ratings: ratingRoutes(c.controllers.ratings),
       notifications: notificationRoutes(c.controllers.notifications),
     };
     for (const module of API_MODULES) {
