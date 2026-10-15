@@ -696,15 +696,17 @@ function regForm(api,srv){
 <div class="seg"><button data-rr="business" aria-pressed="${b}">Biznes</button><button data-rr="supplier" aria-pressed="${!b}">Xo'jalik (Supplier)</button></div>
 <div class="grid" style="margin-top:10px">${inp("name","Ismingiz",'maxlength="100" autocomplete="name"')}${inp("phone","Telefon",'type="tel" placeholder="+998 90 123 45 67" autocomplete="tel"')}${inp("email","Email (ixtiyoriy)",'type="email" maxlength="254" autocomplete="email"')}${inp("org",b?"Biznes nomi":"Xo'jalik nomi",'maxlength="100"')}
 ${b?`<label>Turi<select data-f="type">${REG_TYPES.map(t=>`<option${t===F.type?" selected":""}>${esc(t)}</option>`).join("")}</select></label>${inp("area","Mahalla / hudud",'maxlength="60"')}${inp("address","Manzil",'maxlength="200"')}`:`${inp("area","Mahalla / hudud",'maxlength="60"')}${inp("radius","Yetkazish radiusi (km)",'type="number" min="1" max="100" step="1" inputmode="numeric"')}`}</div>
+<label style="display:flex;gap:8px;align-items:flex-start;margin-top:10px"><input type="checkbox" data-tc="1"${F.terms?" checked":""} style="width:20px;height:20px;flex:none;margin:2px 0 0"><span><a href="terms.html" target="_blank" rel="noopener">Foydalanish shartlari va maxfiylik siyosati</a> bilan tanishdim va roziman</span></label>
 <p class="msg" role="alert">${esc(msg)}</p><div class="acts"><button class="btn p" data-rg="go"${busy?" disabled":""}>${busy?"Yuborilmoqda…":"Ro'yxatdan o'tish"}</button></div></div>`};
   const submit=()=>{if(busy)return;const b=role==="business",g=k=>(F[k]||"").trim();
+    if(!F.terms){msg="Davom etish uchun foydalanish shartlariga rozilik bering.";draw();return}
     const organization=b?{name:g("org"),type:F.type,area:g("area"),address:g("address")}:{name:g("org"),area:g("area"),deliveryRadiusKm:Number(g("radius"))};
     if(!b&&!Number.isInteger(organization.deliveryRadiusKm)){msg="Yetkazish radiusini butun son (km) bilan kiriting.";draw();return}
     const payload={role,name:g("name"),phone:g("phone"),organization};if(g("email"))payload.email=g("email");
     busy=true;msg="";draw();
     api.auth.register(payload).then(u=>{srvUser(api,srv,u);box.innerHTML=`<div class="card"><h2>Ro'yxatdan o'tdingiz</h2><p class="hint">Hisobingiz yaratildi. Hozircha ilovaning asosiy bo'limlari demo ma'lumot bilan ishlaydi, haqiqiy buyurtmalar keyingi bosqichlarda ulanadi.</p></div>`})
     .catch(e=>{busy=false;msg=e&&e.message?e.message:"Xato yuz berdi.";if(e&&e.code==="CONFLICT"&&/allaqachon ro'yxatdan o'tgansiz/.test(e.message||""))msg+=" Sahifani qayta oching.";draw()})};
-  box.addEventListener("input",e=>{const k=e.target&&e.target.dataset&&e.target.dataset.f;if(k)F[k]=e.target.value});
+  box.addEventListener("input",e=>{const k=e.target&&e.target.dataset&&e.target.dataset.f;if(k)F[k]=e.target.value;else if(e.target&&e.target.dataset&&e.target.dataset.tc)F.terms=e.target.checked});
   box.addEventListener("click",e=>{const r=e.target.closest("[data-rr]");if(r){role=r.dataset.rr;msg="";draw();return}if(e.target.closest("[data-rg]"))submit()});
   draw()}
 /* Supplier: serverdagi mahsulotlar (POST/PATCH/DELETE /api/products). Faqat server ulangan va rol supplier bo'lsa ko'rinadi.
