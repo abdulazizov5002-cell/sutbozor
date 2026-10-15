@@ -109,4 +109,15 @@ describe("/api/orders (yaratish, harakatlar, o'qish)", () => {
     assert.equal(res.statusCode, 200);
     assert.deepEqual(json(res).data.items.map((i: any) => i.status), ["ACTIVE", "CANCELLED"]);
   });
+  test("E: yetkazish sikli HTTP orqali; sirasiz 409; bir kunda ikkinchi marta 409; huquq 403", async () => {
+    const url = `/api/orders/${orderId}/items/${itemA}`;
+    assert.equal((await call("POST", url, "supA", { action: "depart" })).statusCode, 409); // tayyor emas
+    assert.equal((await call("POST", url, "biz", { action: "prepare" })).statusCode, 403);
+    for (const a of ["prepare", "ready", "depart"]) assert.equal((await call("POST", url, "supA", { action: a })).statusCode, 200, a);
+    const done = await call("POST", url, "supA", { action: "deliver" });
+    assert.equal(done.statusCode, 200); assert.equal(json(done).data.items[0].daysDelivered, 1);
+    for (const a of ["prepare", "ready", "depart"]) assert.equal((await call("POST", url, "supA", { action: a })).statusCode, 200, a);
+    assert.equal((await call("POST", url, "supA", { action: "deliver" })).statusCode, 409); // bugun allaqachon yetkazilgan
+    assert.equal((await call("POST", url, "supA", { action: "pause" })).statusCode, 400); // sababsiz
+  });
 });

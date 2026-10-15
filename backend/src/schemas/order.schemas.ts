@@ -27,15 +27,18 @@ export const createOrderBody = strictObject({
 export type CreateOrderBody = z.infer<typeof createOrderBody>;
 
 /**
- * Buyurtma qismi (bitta supplier) ustida harakat. D bosqichi: faqat SENT holatida.
- * accept/reject: supplier. cancel: buyurtma egasi (business). Rad etish va bekor qilish uchun sabab majburiy.
- * Yetkazish harakatlari (prepare, deliver, pause...) E bosqichida qo'shiladi.
+ * Buyurtma qismi (bitta supplier) ustida harakat.
+ * Supplier: accept (shartnoma yaratadi), reject, prepare -> ready -> depart -> deliver (kunlik yetkazish sikli), pause, resume.
+ * Business: cancel (faqat SENT), pickup (olib ketish rejimida tayyor mahsulotni oldim).
+ * Rad etish, bekor qilish va to'xtatish uchun sabab majburiy.
  */
+export const ORDER_ITEM_ACTIONS = ["accept", "reject", "cancel", "prepare", "ready", "depart", "deliver", "pickup", "pause", "resume"] as const;
+export type OrderItemAction = (typeof ORDER_ITEM_ACTIONS)[number];
 export const orderItemActionBody = strictObject({
-  action: z.enum(["accept", "reject", "cancel"]),
+  action: z.enum(ORDER_ITEM_ACTIONS),
   reason: optionalText(300),
 }).superRefine((v, ctx) => {
-  if ((v.action === "reject" || v.action === "cancel") && v.reason.length < 3) {
+  if ((v.action === "reject" || v.action === "cancel" || v.action === "pause") && v.reason.length < 3) {
     ctx.addIssue({ code: "custom", path: ["reason"], message: "Sababni yozing (kamida 3 belgi)." });
   }
 });

@@ -198,59 +198,116 @@ function orderWrites(prisma: PrismaClient): Pick<OrderRepository, "findOfferings
       return rows.map((r) => ({ supplierId: r.supplierId, pricePerUnit: money(r.pricePerUnit), dailyCapacity: Number(r.dailyCapacity) }));
     },
     async create(input, hooks) {
-      // SB-<n> ketma-ketligi: birinchi yaratishda ikki so'rov to'qnashsa P2002 bo'ladi, shunda qayta uriniladi.
-      for (let attempt = 0; ; attempt++) {
-        try {
-          return await prisma.$transaction(async (tx) => {
-            const seq = await tx.sequence.upsert({
-              where: { name: "order" }, create: { name: "order", value: 1001 }, update: { value: { increment: 1 } },
-            });
-            const row = await tx.order.create({
-              data: {
-                publicId: `SB-${seq.value}`, businessId: input.businessId, product: input.product,
-                quantityPerDay: input.quantityPerDay, days: input.days, deliveryMode: input.deliveryMode,
-                paymentSchedule: input.paymentSchedule, prepTime: input.prepTime,
-                items: {
-                  create: input.items.map((i) => ({
-                    supplierId: i.supplierId, quantityPerDay: i.quantityPerDay, pricePerUnit: toBigInt(i.pricePerUnit),
-                  })),
-                },
+      return withSequenceRetry(() =>
+        prisma.$transaction(async (tx) => {
+          const n = await nextNumber(tx, "order");
+          const row = await tx.order.create({
+            data: {
+              publicId: `SB-${n}`, businessId: input.businessId, product: input.product,
+              quantityPerDay: input.quantityPerDay, days: input.days, deliveryMode: input.deliveryMode,
+              paymentSchedule: input.paymentSchedule, prepTime: input.prepTime,
+              items: {
+                create: input.items.map((i) => ({
+                  supplierId: i.supplierId, quantityPerDay: i.quantityPerDay, pricePerUnit: toBigInt(i.pricePerUnit),
+                })),
               },
-              include: { items: true },
-            });
-            const order = mapOrder(row);
-            await tx.auditLog.create({ data: auditData(hooks.audit(order)) });
-            const supplierIds = [...new Set(order.items.map((i) => i.supplierId))];
-            for (const supplierId of supplierIds) await notifyUsers(tx, recipientWhere({ supplierId }), hooks.notify(order));
-            return order;
+            },
+            include: { items: true },
           });
-        } catch (e) {
-          if (prismaCode(e) === "P2002") {
-            if (attempt < 2) continue;
-            throw conflict("Buyurtma raqamini berib bo'lmadi. Qayta urinib ko'ring.");
-          }
-          throw e;
-        }
-      }
+          const order = mapOrder(row);
+          await tx.auditLog.create({ data: auditData(hooks.audit(order)) });
+          const supplierIds = [...new Set(order.items.map((i) => i.supplierId))];
+          for (const supplierId of supplierIds) await notifyUsers(tx, recipientWhere({ supplierId }), hooks.notify(order));
+          return order;
+        }),
+      );
     },
     async transitionItem(input, hooks) {
-      return prisma.$transaction(async (tx) => {
-        const changed = await tx.orderItem.updateMany({
-          where: {
-            id: input.itemId, orderId: input.orderId, status: "SENT",
-            ...(input.supplierId ? { supplierId: input.supplierId } : {}),
-            ...(input.businessId ? { order: { businessId: input.businessId } } : {}),
-          },
-          data: { status: input.to },
-        });
-        if (changed.count !== 1) return null;
-        const row = await tx.order.findUnique({ where: { id: input.orderId }, include: { items: true } });
-        if (!row) return null;
-        const order = mapOrder(row);
-        await tx.auditLog.create({ data: auditData(hooks.audit(order)) });
-        await notifyUsers(tx, recipientWhere(hooks.recipient), hooks.notify(order));
-        return order;
-      });
+      return withSequenceRetry(() =>
+        prisma.$transaction(async (tx) => {
+          const before = await tx.order.findUnique({ where: { id: input.orderId }, include: { items: true } });
+          const item = before?.items.find((i) => i.id === input.itemId);
+          if (!before || !item) return null;
+
+          // Yetkazish hisobi: +1 kun; oxirgi kunda COMPLETED, aks holda keyingi kun uchun SCHEDULED.
+          const counted = input.delivery ? item.daysDelivered + 1 : null;
+          const completes = counted !== null && counted >= before.days;
+          const data = {
+            ...(input.to.status ? { status: input.to.status } : {}),
+            ...(input.to.deliveryStatus ? { deliveryStatus: input.to.deliveryStatus } : {}),
+            ...(counted !== null
+              ? {
+                  daysDelivered: counted, lastDeliveredOn: new Date(`${input.delivery!.today}T00:00:00.000Z`),
+                  status: completes ? ("COMPLETED" as const) : item.status,
+                  deliveryStatus: completes ? ("DELIVERED" as const) : ("SCHEDULED" as const),
+                }
+              : {}),
+          };
+          const changed = await tx.orderItem.updateMany({
+            where: {
+              id: input.itemId, orderId: input.orderId, status: input.from.status,
+              ...(input.from.deliveryStatus ? { deliveryStatus: input.from.deliveryStatus } : {}),
+              ...(input.supplierId ? { supplierId: input.supplierId } : {}),
+              ...(input.businessId ? { order: { businessId: input.businessId } } : {}),
+              ...(input.delivery
+                ? { OR: [{ lastDeliveredOn: null }, { lastDeliveredOn: { lt: new Date(`${input.delivery.today}T00:00:00.000Z`) } }] }
+                : {}),
+            },
+            data,
+          });
+          if (changed.count !== 1) return null;
+
+          if (input.contract) {
+            const n = await nextNumber(tx, "contract");
+            const contract = await tx.contract.create({
+              data: {
+                publicId: `CT-${n}`, orderId: before.id, businessId: before.businessId, supplierId: item.supplierId,
+                product: before.product, quantityPerDay: item.quantityPerDay, unit: input.contract.unit, pricePerUnit: item.pricePerUnit,
+                days: before.days, startDate: new Date(`${input.contract.startDate}T00:00:00.000Z`),
+                endDate: new Date(`${input.contract.endDate}T00:00:00.000Z`), paymentSchedule: before.paymentSchedule,
+                deliveryMode: before.deliveryMode, status: "ACTIVE",
+              },
+            });
+            await tx.orderItem.update({ where: { id: input.itemId }, data: { contractId: contract.id } });
+          } else if (item.contractId) {
+            // To'xtatish/davom ettirish/yakunlash shartnoma holatiga ham o'tadi.
+            const next = completes ? "COMPLETED" : input.to.status;
+            if (next === "ACTIVE" || next === "PAUSED" || next === "COMPLETED") {
+              await tx.contract.update({ where: { id: item.contractId }, data: { status: next } });
+            }
+          }
+
+          const row = await tx.order.findUnique({ where: { id: input.orderId }, include: { items: true } });
+          if (!row) return null;
+          const order = mapOrder(row);
+          await tx.auditLog.create({ data: auditData(hooks.audit(order)) });
+          const content = hooks.notify(order);
+          if (content) await notifyUsers(tx, recipientWhere(hooks.recipient), content);
+          return order;
+        }),
+      );
     },
   };
+}
+
+/**
+ * Ketma-ket raqam (SB-<n>, CT-<n>): `sequences` jadvalidagi qator tranzaksiya ichida oshiriladi (qator qulfi).
+ * Birinchi yaratishda ikki so'rov to'qnashsa P2002 bo'ladi: withSequenceRetry qayta urinadi.
+ */
+async function nextNumber(tx: any, name: "order" | "contract"): Promise<number> {
+  const seq = await tx.sequence.upsert({ where: { name }, create: { name, value: 1001 }, update: { value: { increment: 1 } } });
+  return seq.value as number;
+}
+async function withSequenceRetry<T>(run: () => Promise<T>): Promise<T> {
+  for (let attempt = 0; ; attempt++) {
+    try {
+      return await run();
+    } catch (e) {
+      if (prismaCode(e) === "P2002") {
+        if (attempt < 2) continue;
+        throw conflict("Raqamni berib bo'lmadi. Qayta urinib ko'ring.");
+      }
+      throw e;
+    }
+  }
 }
