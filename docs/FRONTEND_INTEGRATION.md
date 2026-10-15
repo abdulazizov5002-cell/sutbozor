@@ -1,7 +1,8 @@
-# Frontend integratsiyasi (tayyorlov bosqichi)
+# Frontend integratsiyasi
 
-Maqsad: frontend backendga **bosqichma-bosqich** o'tishi uchun tayyor qatlam. Hozir mavjud Telegram Mini App frontendi avvalgidek
-brauzer xotirasi bilan ishlaydi (`useBackend: false`). Hech bir mavjud funksiya backendga ko'chirilmagan.
+Maqsad: frontend backendga **bosqichma-bosqich** o'tishi uchun tayyor qatlam. Hozir `env.js` da `useBackend: true`: Telegram ichida ochilganda
+ilova `loginWithTelegram()` bilan kiradi (`#srv` qatorida holat) va `#admin` serverdagi `ADMIN` roli bilan ochiladi. Qolgan funksiyalar
+(buyurtma, to'lov, mahsulot va h.k.) hali brauzer xotirasi (demo) bilan ishlaydi.
 
 ## Fayllar
 ```
@@ -69,10 +70,10 @@ oxirida `/` siz). Aks holda brauzer so'rovni bloklaydi.
 ## Ko'chirish tartibi (tavsiya)
 1. `useBackend` ni faqat sinov muhitida yoqing, `checkConnection()` bilan tekshiring.
 2. O'qish: buyurtmalar, to'lovlar va mahsulotlar ro'yxati (`list`, `getById`) mavjud ko'rinishlarga ulanadi, localStorage zaxira sifatida qoladi.
-3. Autentifikatsiya: `Auth`/`loginRole` o'rniga `authService` (backend auth bosqichidan keyin, docs/SECURITY.md dagi reja).
+3. Autentifikatsiya: Telegram kirishi tayyor (`authService`); `Auth`/`loginRole` ni to'liq `authService` ga o'tkazish ro'yxatdan o'tish bosqichi bilan (docs/SECURITY.md dagi reja).
 4. Yozish amallari: `run()` harakatlari birma-bir xizmat metodlariga o'tkaziladi.
 5. Oxirida frontenddagi rol tekshiruvi va localStorage holati olib tashlanadi. Demo admin login allaqachon olib tashlangan: `#admin` faqat server `ADMIN` roli bilan ochiladi.
 
 ## Hali qilinmagan
-Mavjud ilova xizmatlardan foydalanmaydi (`useBackend: false`). Telegram `initData` bilan kirish backendda yozilmagan.
+Ilovaning asosiy oqimlari xizmatlardan hali foydalanmaydi (faqat kirish va admin tekshiruvi). Backend yozish endpointlari yo'q.
 Servislarda token yangilash (refresh) va qayta urinish yo'q.

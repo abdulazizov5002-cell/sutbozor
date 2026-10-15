@@ -41,8 +41,8 @@ PostgreSQL (Neon)
   Barcha harakatlar `run(action, dataset)` orqali: ruxsat (`ACT_PERM`) -> validatsiya -> holat -> bildirishnoma -> `save()`.
   Xizmatlar: `Auth`, `PaymentService`, `PaymentProviders` (`manual` ishlaydi, `click/payme/uzum` stub), `DisputeService`, `AdminService`, `Notify`, `Validate`.
 - `CONFIG.platformCommission = 0`, yagona `fee()` funksiyasi; hamma joyda "Platforma komissiyasi: 0%".
-- Demo admin (`ADMIN_DEMO`, `#admin`) hali bor: bu **ma'lum xavfsizlik qarzi** (`backend/docs/SECURITY.md`, `backend/security/secret-baseline.json`).
-  Backend uni tanimaydi; uni faqat backend admin kirishi tayyor bo'lgach olib tashlash kerak.
+- Demo `admin/admin123` olib tashlangan (A bosqich). `#admin` faqat server tasdiqlagan `ADMIN` bilan ochiladi (`admVerify()`: Telegram kirishi + `GET /api/auth/me`, rol bazadan).
+  Panel ichidagi ko'rinish va amallar hali demo (`localStorage`); serverdagi haqiqiy ma'lumot himoyasi backend `requireRole("ADMIN")` da. Alohida admin login (argon2id, 2FA) yo'q.
 - Backend qatlami (ilovadan alohida, topilmasa ham sahifa ishlaydi): `env.js` -> `js/config.js` (`SutBozorConfig`) ->
   `js/api/apiClient.js` (token faqat xotirada), `authService`, `productService`, `orderService`, `paymentService`, `js/api/index.js` (`SutBozorApi.get()`).
 - `env.js` hozir: `env: "production"`, `apiBaseUrl: "https://mizatus.onrender.com"`, `useBackend: true`.
@@ -101,11 +101,5 @@ npm test              # contract, telegram, auth, rbac, logging, http (baza kera
 npm run check:secrets
 ```
 
-### Hujjatlardagi eskirgan joylar (kod bilan solishtirilgan, hali tuzatilmagan)
-- `backend/README.md` 1-bo'lim: "frontend hozircha backendga ulanmagan", "autentifikatsiya yo'q" deyilgan — aslida Telegram kirishi ishlaydi va frontend ulanishni sinaydi.
-- `backend/README.md` 6-bo'lim: "`package-lock.json` hali yo'q" — aslida commit qilingan.
-- `backend/README.md` 9-bo'lim va `schema.prisma` boshidagi izoh: "QORALAMA, migratsiya yaratilmagan" — aslida `20261011000000_init` migratsiyasi bor.
-- `docs/FRONTEND_INTEGRATION.md`: "`useBackend: false`", "Telegram initData bilan kirish backendda yozilmagan" — eskirgan.
-- `env.js` izohi "`useBackend: true` (standart) bo'lsa ... demo bilan ishlaydi" deydi; `js/config.js` va `generate-env.js` da standart `false`.
-
-Bu joylar alohida PR'da tuzatiladi.
+### CI
+`.github/workflows/ci.yml`: har Pull Request'da `backend/` da `npm ci`, `prisma generate`, typecheck, build, test. Merge'dan oldin yashil bo'lishi shart.

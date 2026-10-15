@@ -1,6 +1,6 @@
 // SutBozor ma'lumotlar bazasi sxemasi (PostgreSQL).
-// HOLAT: QORALAMA (DRAFT). Migratsiya yaratilmagan, baza ulanmagan. Biznes jadvallari Database bosqichida tasdiqlanib, shundan keyin migratsiya qilinadi.
-// Server DATABASE_URL berilmaguncha bu sxemadan foydalanmaydi (entity endpointlari 501 qaytaradi).
+// HOLAT: 20261011000000_init migratsiyasi Neon'ga qo'llangan. Sxema o'zgarsa, yangi migratsiya yaratiladi (mavjudini tahrirlamang).
+// DATABASE_URL berilmasa server bu sxemadan foydalanmaydi (entity endpointlari 501 qaytaradi).
 // Pul summalari BigInt (butun so'm). API da number, aylantirish src/repositories/prisma/mappers.ts da.
 // CHECK constraint va audit_logs triggerlari prisma/constraints.sql da (Prisma ularni sxemada qo'llamaydi).
 // Birinchi marta: npx prisma migrate dev --name init --create-only, so'ng constraints.sql ni migratsiya oxiriga qo'shing.
