@@ -123,7 +123,7 @@ Productionda tekshiring:
 - `.env` serverda, repozitoriyda emas. Sirlar hosting muhitidan beriladi.
 - `LOG_LEVEL=info` yoki yuqori.
 - HTTPS proxy darajasida (Nginx, Caddy, Cloudflare).
-- Frontenddagi demo admin (`admin/admin123`) **hali olib tashlanmagan** (ma'lum qarz, reja `docs/SECURITY.md` da). Haqiqiy foydalanuvchilarga ochishdan oldin bu hal qilinishi shart.
+- Frontenddagi demo admin (`admin/admin123`) olib tashlangan: admin panel faqat server `ADMIN` roli bilan ochiladi (`docs/SECURITY.md`). Birinchi admin: `docs/ADMIN_BOOTSTRAP.md`.
 
 Server `SIGINT`/`SIGTERM` da to'g'ri to'xtaydi (ulanishlar yopiladi).
 
@@ -218,7 +218,7 @@ Yoqish uchun uchta narsa kerak: `DATABASE_URL`, `TELEGRAM_BOT_TOKEN`, `JWT_SECRE
 
 **Keyingi bosqichlar (hali yo'q):**
 - Ro'yxatdan o'tish: Business/Supplier o'zi hisob yaratishi (rolni foydalanuvchi tanlaydi, `admin` esa hech qachon o'zi tanlanmaydi), admin tasdiqlashi. Hozircha birinchi admin qo'lda yaratiladi (`docs/ADMIN_BOOTSTRAP.md`).
-- Frontend: `useBackend` yoqilib, `/api/auth/telegram` chaqiriladi va `admin/admin123` olib tashlanadi (`docs/SECURITY.md`).
+- Frontend: admin panel server roliga bog'langan (bajarildi). Qolgani: biznes/supplier ko'rinishlarini API ma'lumotiga o'tkazish (`docs/SECURITY.md`).
 - Sessiyani bekor qilish (logout): sessiya jadvali qo'shilgach. Hozircha token 15 daqiqada tugaydi, bloklash esa darhol ishlaydi.
 - Admin uchun alohida kirish (argon2id parol, 2FA).
 
