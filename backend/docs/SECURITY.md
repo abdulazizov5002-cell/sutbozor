@@ -44,9 +44,9 @@ Hozir `index.html` da quyidagilar bor. Backend auth tayyor bo'lgach ular olib ta
 
 | Frontenddagi narsa | Qator (index.html script) | Nima bilan almashtiriladi |
 |---|---|---|
-| `ADMIN_DEMO` (admin / admin123 xeshi) | 30 | `POST /api/auth/admin/login` (argon2id, 2FA, qattiq limit). Kodda hech qanday kirish ma'lumoti qolmaydi |
-| `sha256`, `rndHex` | 31, 44 | Kerak emas (xeshlash va token serverda) |
-| `admLogin`, `isAdm`, `S.sessions`, `S.lock`, `sessionStorage["sb-admin"]` | 574, 466, 125, 575 | Server sessiyasi/JWT; urinishlar limiti serverda |
+| ~~`ADMIN_DEMO` (admin / admin123 xeshi)~~ | — | **Olib tashlandi.** Admin panel faqat server roli bilan ochiladi: Telegram kirishi + `GET /api/auth/me`, `role=admin` va `ACTIVE` (rol bazadan) |
+| ~~`sha256`, `rndHex`~~ | — | **Olib tashlandi** (xeshlash va token serverda) |
+| ~~`admLogin`, `S.sessions`, `S.lock`, `sessionStorage["sb-admin"]`~~ | — | **Olib tashlandi.** O'rniga `admVerify()`: server javobi (`ADM`) faqat xotirada, har `#admin` ga kirishda qayta tekshiriladi. Eski `sb-admin`/`S.sessions` yuklashda tozalanadi |
 | `Auth` obyekti (`current`, `adminUser`, `login`, `ctx`) | 122 | `AuthClient`: token xotirada, `GET /api/auth/me` bilan kim ekanligi aniqlanadi |
 | `loginRole`, `S.role`, `S.uid`, `S.users` (rol almashtirish) | 130 | Telegram orqali kirish; rol serverdan keladi, foydalanuvchi o'zgartira olmaydi |
 | `ROLE_PERMS`, `ACT_PERM`, `VIEW_PERM` bilan ruxsat | 116, 394, 550 | Faqat interfeys uchun: `me.permissions` bilan tugmani yashirish. Haqiqiy tekshiruv serverda |
@@ -58,12 +58,14 @@ Tartib: (1) backend auth endpointlari, (2) frontend `AuthClient` va `me` bilan u
 
 ## 5. Hali qilinmagan / cheklovlar
 - Haqiqiy server ishga tushirilmagan: Helmet, CORS va rate limit plaginlari faqat sozlama darajasida tekshirilgan (sof funksiyalar va marshrut sozlamalari).
-- Frontenddagi demo admin kirishi hozircha ishlaydi (qarz sifatida qayd etilgan). Uni olib tashlash backend auth tayyor bo'lgandan keyin.
+- Frontenddagi demo admin kirishi olib tashlandi, baseline bo'sh. Admin panel ichidagi ko'rinish va amallar hali demo ma'lumot (`localStorage`) ustida ishlaydi:
+  panelni ochish brauzerdagi tekshiruv, uni konsoldan chetlab o'tish faqat o'z brauzeridagi demo ma'lumotni ochadi. Serverdagi haqiqiy ma'lumot
+  faqat backend `requireRole("ADMIN")` bilan himoyalangan. Alohida admin login (`/api/auth/admin/login`, argon2id, 2FA) hali yo'q: admin Telegram orqali kiradi.
 - Parol/MFA, token aylanishi (refresh rotation), sessiyalarni bekor qilish: auth bosqichida.
 - Skaner namunaviy qoidalar bilan ishlaydi, u kodni ko'rib chiqishning o'rnini bosmaydi.
 
 ## Rol asosidagi kirish nazorati (RBAC middleware)
-Demo `admin/admin123` faqat prototip uchun (frontendda, ma'lum qarz) va production autentifikatsiyasi sifatida ISHLATILMAYDI. Backend uni tanimaydi: backendda admin faqat bazadagi `User(role=admin)` bo'ladi.
+Frontendda demo admin login yo'q (olib tashlangan). Admin faqat bazadagi `User(role=admin)`: frontend admin panelini ham faqat `GET /api/auth/me` shuni tasdiqlasa ochadi.
 
 `src/middleware/auth.ts`:
 | Middleware | Natija |

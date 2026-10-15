@@ -71,7 +71,7 @@ oxirida `/` siz). Aks holda brauzer so'rovni bloklaydi.
 2. O'qish: buyurtmalar, to'lovlar va mahsulotlar ro'yxati (`list`, `getById`) mavjud ko'rinishlarga ulanadi, localStorage zaxira sifatida qoladi.
 3. Autentifikatsiya: `Auth`/`loginRole` o'rniga `authService` (backend auth bosqichidan keyin, docs/SECURITY.md dagi reja).
 4. Yozish amallari: `run()` harakatlari birma-bir xizmat metodlariga o'tkaziladi.
-5. Oxirida frontenddagi demo admin, rol tekshiruvi va localStorage holati olib tashlanadi.
+5. Oxirida frontenddagi rol tekshiruvi va localStorage holati olib tashlanadi. Demo admin login allaqachon olib tashlangan: `#admin` faqat server `ADMIN` roli bilan ochiladi.
 
 ## Hali qilinmagan
 Mavjud ilova xizmatlardan foydalanmaydi (`useBackend: false`). Telegram `initData` bilan kirish backendda yozilmagan.

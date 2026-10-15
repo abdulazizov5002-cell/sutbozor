@@ -110,26 +110,9 @@ const SUP0=[
 {id:"F",name:"Yusupovlar xo'jaligi",area:"Do'stlik",radius:5,rating:3.9,n:5,products:[PS("Sut",4,5,16500)]},
 {id:"G",name:"Nazarovlar xo'jaligi",area:"Navbahor",radius:8,rating:4.7,n:26,products:[PS("Sut",9,10,12000)]}];
 /* ===== 1-BOSQICH: konfiguratsiya, rollar, audit, to'lovlar (backendga ko'chirishga tayyor tuzilma) ===== */
-const CONFIG={platformCommission:0,currency:"so'm",paymentPeriodDays:7,paymentProvider:"manual",deliveryGapMin:{supplier:40,pickup:20},timezone:"Asia/Tashkent",confirmDays:3,adminSessionMin:30}; // komissiya 0%: supplier to'liq summani oladi
+const CONFIG={platformCommission:0,currency:"so'm",paymentPeriodDays:7,paymentProvider:"manual",deliveryGapMin:{supplier:40,pickup:20},timezone:"Asia/Tashkent",confirmDays:3}; // komissiya 0%: supplier to'liq summani oladi
 const ROLES=["business","supplier","admin"]; // admin oddiy interfeysda ko'rinmaydi, faqat alohida #admin kirish orqali
-/* DEMO ONLY. Login va parolni frontend kodida saqlash real production uchun XAVFSIZ EMAS: kod hammaga ochiq.
-   Production: server tomonida autentifikatsiya, parol xeshi (argon2/bcrypt), httpOnly sessiya yoki JWT,
-   2FA, urinishlar limiti va serverdagi rol tekshiruvi (admin API faqat admin roliga ochiq). */
-const ADMIN_DEMO={username:"admin",passHash:"240be518fabd2724ddb6f04eeb1da5967448d7e831c08c8fa822809f74c720a9"}; // admin123 ning SHA-256 xeshi: ochiq matn kodda yo'q, lekin bu ham real himoya emas (xesh frontendda ko'rinadi, oflayn taxmin qilinadi)
-function sha256(str){
-  const K=[1116352408,1899447441,3049323471,3921009573,961987163,1508970993,2453635748,2870763221,3624381080,310598401,607225278,1426881987,1925078388,2162078206,2614888103,3248222580,3835390401,4022224774,264347078,604807628,770255983,1249150122,1555081692,1996064986,2554220882,2821834349,2952996808,3210313671,3336571891,3584528711,113926993,338241895,666307205,773529912,1294757372,1396182291,1695183700,1986661051,2177026350,2456956037,2730485921,2820302411,3259730800,3345764771,3516065817,3600352804,4094571909,275423344,430227734,506948616,659060556,883997877,958139571,1322822218,1537002063,1747873779,1955562222,2024104815,2227730452,2361852424,2428436474,2756734187,3204031479,3329325298];
-  const H=[1779033703,3144134277,1013904242,2773480762,1359893119,2600822924,528734635,1541459225];
-  const m=Array.from(new TextEncoder().encode(str)),l=m.length,R=(x,n)=>(x>>>n)|(x<<(32-n));
-  m.push(128);while(m.length%64!==56)m.push(0);
-  for(const v of[Math.floor(l*8/4294967296),(l*8)>>>0])for(let i=3;i>=0;i--)m.push((v>>>(i*8))&255);
-  for(let o=0;o<m.length;o+=64){
-    const w=new Array(64);for(let i=0;i<16;i++)w[i]=(m[o+4*i]<<24)|(m[o+4*i+1]<<16)|(m[o+4*i+2]<<8)|m[o+4*i+3];
-    for(let i=16;i<64;i++){const q0=R(w[i-15],7)^R(w[i-15],18)^(w[i-15]>>>3),q1=R(w[i-2],17)^R(w[i-2],19)^(w[i-2]>>>10);w[i]=(w[i-16]+q0+w[i-7]+q1)>>>0}
-    let a=H[0],b=H[1],c=H[2],d=H[3],e=H[4],f=H[5],g=H[6],h=H[7];
-    for(let i=0;i<64;i++){const t1=(h+(R(e,6)^R(e,11)^R(e,25))+((e&f)^(~e&g))+K[i]+w[i])>>>0,t2=((R(a,2)^R(a,13)^R(a,22))+((a&b)^(a&c)^(b&c)))>>>0;h=g;g=f;f=e;e=(d+t1)>>>0;d=c;c=b;b=a;a=(t1+t2)>>>0}
-    [a,b,c,d,e,f,g,h].forEach((v,i)=>{H[i]=(H[i]+v)>>>0})}
-  return H.map(x=>x.toString(16).padStart(8,"0")).join("")}
-const rndHex=()=>{const a=new Uint8Array(16);globalThis.crypto.getRandomValues(a);return Array.from(a,b=>b.toString(16).padStart(2,"0")).join("")};
+/* Admin kirishi faqat server orqali (Telegram -> /api/auth/me, rol bazadan). Frontendda admin login/parol yo'q (pastda ADM, admVerify). */
 const dm=s=>s.split("-").reverse().join(".");
 const dt=s=>{const d=new Date(s);return pad(d.getDate())+"."+pad(d.getMonth()+1)+"."+d.getFullYear()+" "+pad(d.getHours())+":"+pad(d.getMinutes())};
 /* audit_log yozuvi: {id,ts,actor,role,action,type,oid,desc} */
@@ -207,10 +190,11 @@ business:["market.view","orders.create","orders.view","payments.view","payments.
 supplier:["products.manage","orders.view","orders.accept","orders.reject","delivery.update","payments.view","payments.confirm","contracts.view","disputes.create","profile.manage"]};
 const auditU=(u,action,type,oid,desc)=>audit(u.name,u.role,action,type,oid,desc);
 /* Auth: hozirgi foydalanuvchi va ruxsat. Kelajakda current() JWT/session'dan user oladi, login() serverga almashadi */
+/* ADM: serverdan kelgan admin (GET /api/auth/me), faqat xotirada. ADMS: tekshiruv holati (idle|checking|ok|fail). */
+let ADM=null,ADMS={st:"idle",msg:""},ADMN=0;
 const Auth={ctx:"app",
- /* Admin sessiyasi: kirishda yaratilgan tasodifiy token (muddati bor). sessionStorage'ga foydalanuvchi ID'sini yozib kirib bo'lmaydi.
-    Frontend-only bo'lgani uchun token baribir brauzerda turadi: haqiqiy himoya serverdagi sessiya/JWT bo'ladi. */
- adminUser(){let t=null;try{t=sessionStorage.getItem("sb-admin")}catch(e){}if(!t||!/^[0-9a-f]{32}$/.test(t))return null;const now=Date.now(),ss=(S.sessions||[]).find(x=>x.t===t&&x.exp>now);if(!ss)return null;ss.exp=now+CONFIG.adminSessionMin*60000;const u=S.users.find(x=>x.id===ss.uid);return u&&u.role==="admin"&&u.status==="ACTIVE"?u:null},
+ /* Admin: faqat server tasdiqlagan ADMIN (ADM, faqat xotirada). Demo foydalanuvchilar (S.users) admin bo'lib kira olmaydi. */
+ adminUser(){return ADM&&ADM.role==="admin"&&ADM.status==="ACTIVE"?{id:ADM.id,name:"Admin (server)",role:"admin",status:"ACTIVE",businessId:null,supplierId:null}:null},
  current(){if(this.ctx==="admin"){return this.adminUser()}return S.users.find(x=>x.id===S.uid)||null},
  can(perm,u){u=u||this.current();return!!u&&u.status==="ACTIVE"&&(ROLE_PERMS[u.role]||[]).includes(perm)},
  require(perm){const u=this.current();if(!this.can(perm,u)){audit(u?u.name:"anonim",u?u.role:"system","permission.denied","permission",perm,"Ruxsat rad etildi: "+perm);throw new Error(!u?"Kirish talab qilinadi.":u.status!=="ACTIVE"?"Hisobingiz faol emas ("+u.status+"), harakat mumkin emas.":"Ruxsat yo'q: "+perm)}return u},
@@ -358,6 +342,7 @@ biz:{id:"BZ-1",name:"Nur nonvoyxonasi",type:"Nonvoyxona",area:"Ziyokor",addr:"Zi
 q:{product:"Sut",qty:20,radius:5,maxPrice:15000,minRating:0,sort:"dist",mode:"supplier",days:30,prep:"06:30",pay:"WEEKLY"}});
 const seed=()=>demo(seed0());
 let S;try{S=JSON.parse(localStorage.getItem("sb-site"))}catch(e){}if(!S||!S.sups)S=seed();else{if(!S.audit)migrate(S);if(!S.contracts)migrate2(S);if(S.ver!==3)migrate3(S)}S.q.pay=S.q.pay||"WEEKLY";
+delete S.sessions;delete S.lock;try{sessionStorage.removeItem("sb-admin")}catch(e){} // eski demo admin sessiyasi endi ishlatilmaydi
 if(ROLES.indexOf(S.role)<0||S.role==="admin")S.role="business"; // admin roli oddiy interfeysga o'tmaydi
 if(!S.users.some(u=>u.id===S.uid&&u.role===S.role))S.uid=(S.users.find(u=>u.role===S.role&&(S.role==="business"?u.businessId===S.biz.id:u.supplierId===S.sup))||{id:"U-101"}).id;
 const save=()=>{sync();try{localStorage.setItem("sb-site",JSON.stringify(S))}catch(e){}};
@@ -651,38 +636,43 @@ function adminAct(a,d){
   else if(a==="uno")AC=null
   else if(a==="dreset"){Auth.require("settings.manage");RA=true}
   else if(a==="dresetno")RA=false
-  else if(a==="dresetyes"){const u=Auth.require("settings.manage"),keep=S.sessions;RA=false;S=seed();S.sessions=keep||[];auditU(u,"demo.reset","system","-","Demo ma'lumotlar admin tomonidan tiklandi")}}
+  else if(a==="dresetyes"){const u=Auth.require("settings.manage");RA=false;S=seed();auditU(u,"demo.reset","system","-","Demo ma'lumotlar admin tomonidan tiklandi")}}
 function admRender(){
   sync();const el=$("adm");
-  if(!isAdm()){el.innerHTML=`<div class="card" style="max-width:380px;margin:40px auto"><h1>Admin kirish</h1><p class="hint">Demo rejim. Faqat vakolatli foydalanuvchilar uchun.</p><label style="margin-top:12px">Login<input id="au" autocomplete="off"></label><label style="margin-top:10px">Parol<input id="ap" type="password" autocomplete="off"></label><p class="msg" role="alert">${esc(AMSG)}</p><div class="acts"><button class="btn p" data-a="login">Kirish</button></div></div>`;return}
+  if(!isAdm()){if(ADMS.st==="idle"){admVerify();return}
+    el.innerHTML=`<div class="card" style="max-width:420px;margin:40px auto"><h1>Admin panel</h1><p class="hint">Faqat server tasdiqlagan ADMIN roli uchun (Telegram orqali kirish, rol bazadan).</p><p class="msg" role="alert">${esc(ADMS.msg)}</p>${ADMS.st==="fail"?`<div class="acts"><button class="btn p" data-a="recheck">Qayta tekshirish</button><a class="btn" href="#">Ilovaga qaytish</a></div>`:""}</div>`;return}
   const cu=Auth.current(),nav=ANAV.filter(n=>Auth.can(VIEW_PERM[n[0]]));
   if(!nav.some(n=>n[0]===AV))AV=nav.length?nav[0][0]:"dash";
   el.innerHTML=`<div class="aw"><div class="ab"><div><h1>SutBozor Admin</h1><p class="hint">${esc(cu.name)} · Platforma komissiyasi: ${CONFIG.platformCommission}%</p></div><button class="btn" data-a="logout">Chiqish</button></div><div class="al"><nav class="an" aria-label="Admin bo'limlari">${nav.map(n=>`<button data-v="${n[0]}" ${AV===n[0]?'aria-current="page"':""}>${n[1]}</button>`).join("")}</nav><div>${AERR?`<div class="card"><p class="msg" role="alert">${esc(AERR)}</p></div>`:""}${AC?confirmCard():""}${nav.length?V[AV]():"<div class='card'>Ruxsat yo'q.</div>"}</div></div></div>`;
 }
-function admLogin(){
-  const u=$("au").value.trim(),pw=$("ap").value,now=Date.now();S.lock=S.lock||{n:0,until:0};
-  if(S.lock.until>now){AMSG="Juda ko'p urinish. "+Math.ceil((S.lock.until-now)/1000)+" soniyadan keyin urinib ko'ring.";audit("noma'lum","admin","admin.login_locked","session","-","Bloklangan vaqtda kirish urinishi");save();admRender();return}
-  if(u===ADMIN_DEMO.username&&sha256(pw)===ADMIN_DEMO.passHash){
-    const au=S.users.find(x=>x.id==="U-1");
-    if(au.status!=="ACTIVE")AMSG="Hisob bloklangan";
-    else{const t=rndHex();S.sessions=(S.sessions||[]).filter(x=>x.exp>now);S.sessions.push({t,uid:au.id,exp:now+CONFIG.adminSessionMin*60000});try{sessionStorage.setItem("sb-admin",t)}catch(e){}S.lock={n:0,until:0};AMSG="";au.lastLoginAt=new Date().toISOString();audit(au.name,"admin","admin.login","session","-","Admin tizimga kirdi")}
-  }else{S.lock.n++;if(S.lock.n>=5){S.lock.until=now+60000;S.lock.n=0}AMSG="Login yoki parol noto'g'ri";audit(u||"noma'lum","admin","admin.login_failed","session","-","Muvaffaqiyatsiz kirish urinishi")}
-  save();admRender();
+/* Admin panel faqat server roli bilan ochiladi: Telegram orqali kirish (token xotirada), so'ng GET /api/auth/me (rol va holat bazadan).
+   Har #admin ga kirishda qayta tekshiriladi. Panel ichidagi ma'lumot hali demo (localStorage); serverdagi haqiqiy ma'lumot himoyasi backend requireRole("ADMIN") da. */
+function srvApi(){const api=window.SutBozorApi&&window.SutBozorApi.get();return api&&api.config.useBackend&&api.config.isConfigured?api:null}
+function admVerify(){
+  const api=srvApi(),n=++ADMN;ADM=null;
+  if(!api){ADMS={st:"fail",msg:"Server ulanmagan (env.js: useBackend yoki apiBaseUrl). Admin panel faqat server orqali ochiladi."};admRender();return}
+  ADMS={st:"checking",msg:"Server bilan rol tekshirilmoqda…"};admRender();
+  const me=()=>api.auth.me(),login=()=>api.auth.loginWithTelegram().then(me);
+  (api.auth.isAuthenticated()?me().catch(e=>{if(e&&e.status===401)return login();throw e}):login()).then(u=>{
+    if(n!==ADMN)return;
+    if(u&&u.role==="admin"&&u.status==="ACTIVE"){ADM=u;ADMS={st:"ok",msg:""};audit("Admin (server)","admin","admin.login","session",String(u.id),"Admin server roli bilan kirdi");save()}
+    else ADMS={st:"fail",msg:"Server rolingiz ADMIN emas yoki hisob faol emas. Admin panel yopiq."};
+  }).catch(e=>{if(n!==ADMN)return;ADMS={st:"fail",msg:"Server: "+(e&&e.code?e.code:"xato")+(e&&e.message?" - "+e.message:"")}})
+  .then(()=>{if(n===ADMN&&Auth.ctx==="admin")admRender()});
 }
 $("adm").addEventListener("click",e=>{
   const v=e.target.closest("[data-v]");if(v){AV=v.dataset.v;admRender();return}
   const b=e.target.closest("[data-a]");if(!b)return;
-  if(b.dataset.a==="login")admLogin();
-  else if(b.dataset.a==="logout"){AC=null;AERR="";audit("admin","admin","admin.logout","session","-","Admin chiqdi");{let t=null;try{t=sessionStorage.getItem("sb-admin");sessionStorage.removeItem("sb-admin")}catch(x){}S.sessions=(S.sessions||[]).filter(x=>x.t!==t)}save();location.hash=""}
+  if(b.dataset.a==="recheck"){ADMS={st:"idle",msg:""};admRender()}
+  else if(b.dataset.a==="logout"){AC=null;AERR="";audit("Admin (server)","admin","admin.logout","session","-","Admin chiqdi");ADM=null;ADMS={st:"idle",msg:""};ADMN++;{const api=srvApi();if(api)api.tokenStore.clear()}save();location.hash=""}
   else{try{AERR="";adminAct(b.dataset.a,b.dataset)}catch(x){AERR=x.message}save();admRender()}
 });
 $("adm").addEventListener("change",e=>{if(e.target.id==="af"){AF=e.target.value;admRender()}else if(e.target.id==="apf"){APF=e.target.value;admRender()}});
-$("adm").addEventListener("keydown",e=>{if(e.key==="Enter"&&(e.target.id==="au"||e.target.id==="ap"))admLogin()});
-function route(){const ad=location.hash==="#admin";Auth.ctx=ad?"admin":"app";document.querySelector("main").hidden=ad;$("adm").hidden=!ad;document.title=ad?"SutBozor Admin":"SutBozor";if(ad)admRender();else render()}
+function route(){const ad=location.hash==="#admin";Auth.ctx=ad?"admin":"app";if(ad){ADM=null;ADMS={st:"idle",msg:""}}document.querySelector("main").hidden=ad;$("adm").hidden=!ad;document.title=ad?"SutBozor Admin":"SutBozor";if(ad)admRender();else render()}
 addEventListener("hashchange",route);
 // Server bilan ulanish: faqat env.js da useBackend=true bo'lganda. Demo (localStorage) ishlashiga ta'sir qilmaydi.
 // Token faqat xotirada. Rol serverdan keladi, bu yerda faqat holat ko'rsatiladi (haqiqiy ruxsat serverda tekshiriladi).
-(function(){try{const el=$("srv"),api=window.SutBozorApi&&window.SutBozorApi.get();if(!el||!api||!api.config.useBackend||!api.config.isConfigured)return;
+(function(){try{const el=$("srv"),api=srvApi();if(!el||!api)return;
 const tg=window.Telegram&&window.Telegram.WebApp;try{if(tg&&tg.ready)tg.ready()}catch(x){}
 el.textContent="Server bilan ulanmoqda…";
 api.auth.loginWithTelegram().then(u=>{el.textContent="Server: ulandi ("+u.role+")"}).catch(e=>{el.textContent="Server: "+(e&&e.code?e.code:"xato")+(e&&e.message?" - "+e.message:"")})}catch(x){}})();
