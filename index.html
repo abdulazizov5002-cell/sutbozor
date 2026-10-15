@@ -95,6 +95,7 @@ pre.sc{background:var(--bg);border:1px solid var(--line);border-radius:10px;padd
 <script src="js/api/contractService.js"></script>
 <script src="js/api/paymentService.js"></script>
 <script src="js/api/disputeService.js"></script>
+<script src="js/api/ratingService.js"></script>
 <script src="js/api/adminService.js"></script>
 <script src="js/api/notificationService.js"></script>
 <script src="js/api/index.js"></script>
@@ -739,7 +740,7 @@ function supProducts(api){
    Demo bo'limlar (localStorage) ta'sirlanmaydi. Token 15 daqiqada tugaydi: 401 bo'lsa Telegram orqali qayta kiriladi. */
 function srvOrders(api,role){
   const box=$("sord"),biz=role==="business",ST={SENT:["Javob kutilmoqda","w"],ACTIVE:["Faol",""],CANCELLED:["Rad/bekor","x"],PAUSED:["To'xtatilgan","n"],COMPLETED:["Yakunlangan","n"]},MODE={supplier:"Yetkazib berish",pickup:"Olib ketish"},DL={SCHEDULED:"Bugungi yetkazish kutilmoqda",PREPARING:"Tayyorlanmoqda",READY:"Tayyor",IN_TRANSIT:"Yo'lda",DELIVERED:"Qabul qilinishi kutilmoqda"},TODAY=new Date().toLocaleDateString("en-CA",{timeZone:"Asia/Tashkent"}),NOASK={accept:1,prepare:1,ready:1,depart:1,deliver:1,receive:1,pickup:1,resume:1};
-  const FM={product:Object.keys(CAT)[0],days:"30",mode:"supplier",pay:"WEEKLY"},Q={},AX={key:"",action:"",reason:""};
+  const FM={product:Object.keys(CAT)[0],days:"30",mode:"supplier",pay:"WEEKLY"},Q={},AX={key:"",action:"",reason:""},RT={key:"",score:"5",comment:""},RATED={};
   let products=[],sups={},orders=[],cts={},msg="",ok="",busy=false;
   const call=f=>(api.auth.isAuthenticated()?Promise.resolve():api.auth.loginWithTelegram()).then(f).catch(e=>{if(e&&e.status===401)return api.auth.loginWithTelegram().then(f);throw e});
   const fail=e=>{busy=false;ok="";msg=e&&e.message?e.message:"Xato yuz berdi.";draw()};
@@ -753,8 +754,11 @@ function srvOrders(api,role){
     else if(i.status==="SENT")btns=GO("accept","Qabul qilish")+ASK("reject","Rad etish");
     else if(i.status==="PAUSED")btns=GO("resume","Davom ettirish");
     else if(i.status==="ACTIVE"){if(d==="SCHEDULED"&&!doneToday)btns=GO("prepare","Tayyorlashni boshladim")+ASK("pause","To'xtatish");else if(d==="PREPARING")btns=GO("ready",pick?"Olib ketishga tayyor":"Tayyor");else if(d==="READY"&&!pick)btns=GO("depart","Yo'lga chiqdim");else if(d==="IN_TRANSIT")btns=GO("deliver","Yetkazdim");else if(d==="DELIVERED"&&i.lastDeliveredOn&&i.lastDeliveredOn<TODAY)btns=GO("prepare","Tayyorlashni boshladim")}
+    let rate="";
+    if(i.status==="COMPLETED"&&!RATED[key]){const att=`class="acts" style="margin:0 0 6px" data-key="${key}" data-o="${o.id}" data-i="${i.id}"`;
+      rate=RT.key===key?`<div ${att}><span class="hint" style="margin:0">${biz?"Supplierni baholang:":"Biznesni baholang:"}</span><select data-rs="1">${[5,4,3,2,1].map(n=>`<option value="${n}"${String(n)===RT.score?" selected":""}>${n} ball</option>`).join("")}</select><input type="text" maxlength="500" placeholder="Izoh (ixtiyoriy)" data-rc="1" value="${esc(RT.comment)}" style="flex:1;min-width:140px"><button class="btn s p" data-sa="rate-go"${busy?" disabled":""}>Yuborish</button><button class="btn s" data-sa="rate-no">Yo'q</button></div>`:`<div ${att}><button class="btn s p" data-sa="rate-open" data-k="${key}"${busy?" disabled":""}>Baholash</button></div>`}
     const tag=i.status==="ACTIVE"?[doneToday&&d==="SCHEDULED"?"Bugun yetkazildi":(DL[d]||d),d==="SCHEDULED"&&!doneToday?"w":""]:st,ct=cts[i.contractId];
-    return `<div class="row f" style="padding:6px 0"><div>${who?`<b>${who}</b>`:""}<small>${esc(i.quantityPerDay)} ${esc(u)}/kun · ${money(i.pricePerUnit)} so'm/${esc(u)}${ct?" · "+esc(ct):""}${["ACTIVE","PAUSED","COMPLETED"].includes(i.status)?" · "+esc(i.daysDelivered)+"/"+esc(o.days)+" kun yetkazildi":""}</small>${i.status==="ACTIVE"||i.status==="PAUSED"||i.status==="COMPLETED"?`<small style="display:block">Holat: ${esc(ST[i.status][0])}</small>`:""}</div><span class="tag ${tag[1]}">${esc(tag[0])}</span></div>${btns?`<div class="acts" style="margin:0 0 6px" data-key="${key}" data-o="${o.id}" data-i="${i.id}">${btns}</div>`:""}`};
+    return `<div class="row f" style="padding:6px 0"><div>${who?`<b>${who}</b>`:""}<small>${esc(i.quantityPerDay)} ${esc(u)}/kun · ${money(i.pricePerUnit)} so'm/${esc(u)}${ct?" · "+esc(ct):""}${["ACTIVE","PAUSED","COMPLETED"].includes(i.status)?" · "+esc(i.daysDelivered)+"/"+esc(o.days)+" kun yetkazildi":""}</small>${i.status==="ACTIVE"||i.status==="PAUSED"||i.status==="COMPLETED"?`<small style="display:block">Holat: ${esc(ST[i.status][0])}</small>`:""}</div><span class="tag ${tag[1]}">${esc(tag[0])}</span></div>${btns?`<div class="acts" style="margin:0 0 6px" data-key="${key}" data-o="${o.id}" data-i="${i.id}">${btns}</div>`:""}${rate}`};
   const orderCard=o=>`<div class="row" style="display:block"><b>${esc(o.publicId)} · ${esc(o.product)}</b><small>${esc(o.days)} kun · ${esc(MODE[o.deliveryMode]||o.deliveryMode)} · ${esc(PAYL[o.paymentSchedule]||o.paymentSchedule)}</small>${o.items.map(i=>itemRow(o,i)).join("")}</div>`;
   const offers=()=>products.filter(p=>p.name===FM.product);
   const form=()=>{const u=CAT[FM.product],of=offers();
@@ -774,13 +778,19 @@ ${of.length?of.map(p=>{const s=sups[p.supplierId]||{};return `<div class="row"><
     if(items.some(i=>!Number.isFinite(i.quantityPerDay)||Math.round(i.quantityPerDay*100)!==i.quantityPerDay*100)){msg="Miqdor ko'pi bilan 2 ta kasr raqamli son bo'lsin.";draw();return}
     busy=true;msg="";ok="";draw();
     call(()=>api.orders.create({product:FM.product,days:days,deliveryMode:FM.mode,paymentSchedule:FM.pay,items:items})).then(o=>{Object.keys(Q).forEach(k=>delete Q[k]);ok="Buyurtma "+o.publicId+" yuborildi. Supplier javobini kuting.";return loadOrders()}).then(()=>{busy=false;draw()}).catch(fail)};
+  const rate=(o,i,k)=>{const score=Number(RT.score);if(!Number.isInteger(score)||score<1||score>5){msg="Baho 1 dan 5 gacha bo'lishi kerak.";draw();return}
+    busy=true;msg="";ok="";draw();
+    call(()=>api.ratings.create({orderId:o,itemId:i,score:score,comment:RT.comment.trim()})).then(()=>{RATED[k]=1;RT.key="";busy=false;ok="Baho yuborildi. Rahmat!";draw()}).catch(e=>{if(e&&e.status===409&&/allaqachon/.test(e.message||"")){RATED[k]=1;RT.key=""}fail(e)})};
   const go=(o,i,action,reason)=>{if(!NOASK[action]&&String(reason||"").trim().length<3){msg="Sababni yozing (kamida 3 belgi).";draw();return}
     busy=true;msg="";ok="";AX.key="";draw();
     call(()=>api.orders.act(o,i,action,String(reason||"").trim())).then(()=>{ok={accept:"Qabul qilindi. Shartnoma yaratildi.",reject:"Rad etildi.",cancel:"Bekor qilindi.",prepare:"Tayyorlash boshlandi.",ready:"Tayyor deb belgilandi.",depart:"Yo'lga chiqdi.",deliver:"Yetkazildi. Xaridor qabul qilganini tasdiqlashi kutilmoqda.",receive:"Qabul qilindi. Kun hisobga olindi.",pickup:"Olib ketildi. Bugungi yetkazish qayd etildi.",pause:"To'xtatildi.",resume:"Davom ettirildi."}[action];return loadOrders()}).then(()=>{busy=false;draw()}).catch(e=>{loadOrders().catch(()=>{}).then(()=>fail(e))})};
-  box.addEventListener("input",e=>{const d=e.target&&e.target.dataset;if(!d)return;if(d.f){FM[d.f]=e.target.value;if(d.f==="product"){msg="";Object.keys(Q).forEach(k=>delete Q[k]);draw()}}else if(d.q)Q[d.q]=e.target.value;else if(d.ar)AX.reason=e.target.value});
+  box.addEventListener("input",e=>{const d=e.target&&e.target.dataset;if(!d)return;if(d.f){FM[d.f]=e.target.value;if(d.f==="product"){msg="";Object.keys(Q).forEach(k=>delete Q[k]);draw()}}else if(d.q)Q[d.q]=e.target.value;else if(d.ar)AX.reason=e.target.value;else if(d.rs)RT.score=e.target.value;else if(d.rc)RT.comment=e.target.value});
   box.addEventListener("click",e=>{if(busy)return;const b=e.target.closest("[data-sa]");if(!b)return;const a=b.dataset.sa;
     if(a==="send")send();else if(a==="reload")load();else if(a==="no"){AX.key="";draw()}
     else if(a==="ask"){AX.key=b.dataset.k;AX.action=b.dataset.ac;AX.reason="";msg="";draw()}
+    else if(a==="rate-open"){RT.key=b.dataset.k;RT.score="5";RT.comment="";msg="";ok="";draw()}
+    else if(a==="rate-no"){RT.key="";draw()}
+    else if(a==="rate-go"){const p=b.closest("[data-key]");rate(p.dataset.o,p.dataset.i,p.dataset.key)}
     else if(a==="go-now"){go(b.dataset.o,b.dataset.i,b.dataset.ac,"")}
     else if(a==="go"){const p=b.closest("[data-key]");go(p.dataset.o,p.dataset.i,AX.action,AX.reason)}});
   load()}
