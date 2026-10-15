@@ -57,7 +57,7 @@ export const DISPUTE_STATUSES = ["OPEN", "UNDER_REVIEW", "RESOLVED", "REJECTED",
 export const DISPUTE_REASONS = ["NOT_DELIVERED", "WRONG_QTY", "QUALITY", "PAYMENT", "LATE", "PRICE", "OTHER"] as const;
 export const NOTIFICATION_TYPES = [
   "order.new", "order.accepted", "order.rejected", "order.cancelled", "order.paused", "order.resumed", "delivery.ready", "delivery.done", "payment.due",
-  "payment.submitted", "payment.confirmed", "payment.overdue", "payment.unconfirmed", "dispute.open", "dispute.resolved", "contract.cancelled",
+  "payment.submitted", "payment.confirmed", "payment.rejected", "payment.overdue", "payment.unconfirmed", "dispute.open", "dispute.resolved", "contract.cancelled",
 ] as const;
 
 /** Keyingi bosqichlarda ishga tushadigan API modullari. */

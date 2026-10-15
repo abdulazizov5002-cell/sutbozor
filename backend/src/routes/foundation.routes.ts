@@ -8,6 +8,7 @@ import { policies, routeLimit } from "../security/rateLimit";
 import { validate } from "../validation/validate";
 import { entityRoutes } from "./entity.routes";
 import { orderRoutes } from "./orders.routes";
+import { paymentRoutes } from "./payments.routes";
 import { productRoutes } from "./products.routes";
 
 /** Entity'siz modul (auth, admin): hozircha GET / faqat 501 NOT_IMPLEMENTED qaytaradi. */
@@ -31,7 +32,7 @@ export const foundationRoutes =
       products: productRoutes(c.controllers.products),
       orders: orderRoutes(c.controllers.orders),
       contracts: entityRoutes(c.controllers.contracts),
-      payments: entityRoutes(c.controllers.payments),
+      payments: paymentRoutes(c.controllers.payments),
       disputes: entityRoutes(c.controllers.disputes),
       notifications: entityRoutes(c.controllers.notifications),
     };

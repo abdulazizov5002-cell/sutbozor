@@ -1,4 +1,4 @@
-import type { DeliveryStatus, NotificationType, OrderItemStatus } from "../config/constants";
+import type { DeliveryStatus, NotificationType, OrderItemStatus, PaymentStatus } from "../config/constants";
 import type {
   AuditLog, Business, Contract, Dispute, ISODate, NewAuditLog, Notification, Order, Payment, Product, Supplier, User,
 } from "../domain/entities";
@@ -127,9 +127,26 @@ export interface OrderRepository extends ReadRepository<Order> {
 export type ContractRepository = ReadRepository<Contract>;
 export type DisputeRepository = ReadRepository<Dispute>;
 
+export interface PaymentTransition {
+  id: string;
+  /** Faqat shu holatlardagi to'lov o'tadi (poyga holatida ikkinchi so'rov null oladi). */
+  from: PaymentStatus[];
+  to: PaymentStatus;
+  /** Qo'shimcha himoya: to'lov shu bizneska / supplierga tegishli bo'lishi shart. */
+  businessId?: string;
+  supplierId?: string;
+  /** Yoziladigan maydonlar (submit: usul, tranzaksiya, sana, izoh; reject: izoh). */
+  set?: { paymentMethod?: string; transactionId?: string; paidAt?: ISODate; note?: string };
+}
+
 export interface PaymentRepository extends ReadRepository<Payment> {
-  /** Rejalashtirilgan ish (cron) uchun: muddati o'tgan PENDING to'lovlarni OVERDUE qiladi, o'zgargan sonni qaytaradi. */
+  /** Muddati o'tgan PENDING to'lovlarni OVERDUE qiladi, o'zgargan sonni qaytaradi (hozircha o'qishdan oldin lazy chaqiriladi; cron H bosqichida). */
   markOverdue(today: ISODate): Promise<number>;
+  /** Holat o'tkazish + audit + bildirishnoma bitta tranzaksiyada. Holat/egalik mos kelmasa null; tranzaksiya raqami band bo'lsa 409. */
+  transition(
+    input: PaymentTransition,
+    hooks: { audit: (updated: Payment) => NewAuditLog; recipient: Recipient; notify: (updated: Payment) => NewNotification },
+  ): Promise<Payment | null>;
 }
 
 export interface NotificationRepository extends ReadRepository<Notification> {
