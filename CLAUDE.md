@@ -50,6 +50,7 @@ PostgreSQL (Neon)
   Ilovaning o'zi (buyurtma, to'lov va h.k.) hali ham to'liq `localStorage` bilan ishlaydi.
   Alohida server bo'limlari (demo'dan mustaqil): `#reg` (ro'yxatdan o'tish), `#sprod` (supplier mahsulotlari), `#sord` (`srvOrders`: biznes buyurtma beradi/bekor qiladi, supplier qabul/rad etadi va kunlik yetkazish tugmalarini bosadi, shartnoma raqami va yetkazilgan kunlar ko'rinadi; yakunlangan qismda ikkala tomon uchun "Baholash": 1-5 ball + izoh, `POST /api/ratings`).
   Shuningdek `#spay` (to'lov yozuvlari: biznes "To'lov qildim", supplier "Pul keldi/kelmadi"), `#sdis` (nizo ochish), `#snot` (bildirishnomalar, "O'qidim"), `#adis` (`srvAdmin`, faqat server ADMIN: Nizolar hal qilish, Foydalanuvchilar bloklash/faollashtirish, Buyurtmalar/To'lovlar/Audit log o'qish). `#admin` ichidagi eski bo'limlar hali demo.
+- Jonli rejim: `env.js` da `useBackend: true` va server sozlangan bo'lsa `body.live` qo'shiladi va demo ko'rinishi (rol almashtirgich, bo'lim tugmalari, `#app` ichidagi demo bozor/supplier A,B,C/demo bizneslar) CSS bilan yashiriladi; demo kodi va `localStorage` saqlanadi, `useBackend: false` bo'lsa demo qaytadi. `#admin` ichidagi eski demo bo'limlar bundan mustasno (hali demo).
 - `scripts/generate-env.js`: deploy vaqtida `env.js` ni `SUTBOZOR_API_URL`, `SUTBOZOR_ENV`, `SUTBOZOR_USE_BACKEND` dan yozadi. `env.js` ochiq fayl, unga sir yozilmaydi.
 
 ### Backend (`backend/`)
