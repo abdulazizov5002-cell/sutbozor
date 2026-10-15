@@ -15,7 +15,7 @@ const t = async (name: string, fn: () => unknown | Promise<unknown>) => {
     assert.deepEqual(await checkReadiness(undefined), { statusCode: 503, body: { status: "unavailable", service: "sutbozor-backend", database: "not_configured" } });
   });
   await t("ping xato bersa -> 503 down, xato matni (ulanish ma'lumoti) chiqmaydi", async () => {
-    const r = await checkReadiness(async () => { throw new Error("connect ECONNREFUSED postgresql://user:SECRETPASS@host/db"); });
+    const r = await checkReadiness(async () => { throw new Error("connect ECONNREFUSED postgresql://user:dummySECRETPASS@host/db"); });
     assert.equal(r.statusCode, 503); assert.equal(r.body.database, "down"); assert.ok(!JSON.stringify(r).includes("SECRETPASS"));
   });
   await t("baza sekin (timeout) -> 503 down tez qaytadi", async () => {

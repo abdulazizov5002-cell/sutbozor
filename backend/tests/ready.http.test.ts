@@ -17,7 +17,7 @@ describe("GET /api/ready", () => {
   let up: App, down: App, none: App;
   before(async () => {
     up = await buildApp({ readinessCheck: async () => {} });
-    down = await buildApp({ readinessCheck: async () => { throw new Error("db down postgresql://u:SECRETPASS@h/d"); } });
+    down = await buildApp({ readinessCheck: async () => { throw new Error("db down postgresql://u:dummySECRETPASS@h/d"); } });
     none = await buildApp();
   });
   after(async () => { await up.close(); await down.close(); await none.close(); });

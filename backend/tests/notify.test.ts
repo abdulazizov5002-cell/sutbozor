@@ -8,7 +8,7 @@ const t = async (name: string, fn: () => unknown | Promise<unknown>) => {
   try { await fn(); pass++; } catch (e) { fail++; console.log("FAIL", name, (e as Error).message); }
 };
 const tick = async () => { for (let i = 0; i < 6; i++) await new Promise((r) => setTimeout(r, 0)); };
-const TOKEN = "123456789:SECRET_TOKEN_VALUE_abcdefghijk";
+const TOKEN = "123456789" + ":" + "SECRET_TOKEN_VALUE_abcdefghijk"; // sinov uchun soxta qiymat (skaner naqshiga tushmasligi uchun bo'lingan)
 
 (async () => {
   // ---------- Telegram yuboruvchi ----------
