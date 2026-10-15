@@ -3,7 +3,7 @@
 SutBozor: kichik uy xo'jaliklari (1-10 bosh chorva) va yaqin atrofdagi do'kon, kafe, nonvoyxona, qandolatxona, restoran, mehmonxonalarni
 sut mahsulotlari (sut, qatiq, qaymoq, suzma, tvorog, sariyog') bo'yicha bog'laydigan bozor. Bu papka uning **backend asosi** (foundation).
 
-Holat: asos tayyor, biznes mantiq va autentifikatsiya hali yo'q. Frontend (`../index.html`) o'zgartirilmagan va hozircha backendga ulanmagan.
+Holat: asos, baza (Neon) va Telegram orqali kirish (HMAC + JWT) ishlaydi. Biznes yozish amallari (ro'yxatdan o'tish, mahsulot, buyurtma va h.k.) hali yo'q. Frontend (`../index.html`) backendga ulanib, kirishni sinaydi; qolgan ilova hali brauzer xotirasi (demo) bilan ishlaydi.
 
 ---
 
@@ -108,7 +108,7 @@ npm run check:secrets   # maxfiy ma'lumot skaneri
 
 ## 6. Production build
 
-`package-lock.json` hali yo'q (u faqat birinchi `npm install` dan keyin hosil bo'ladi). Birinchi marta o'z mashinangizda `npm install` qiling va hosil bo'lgan `package-lock.json` ni commit qiling; shundan keyingina serverda `npm ci` ishlaydi.
+`package-lock.json` repoda bor, shuning uchun CI va serverda `npm ci` ishlaydi. Render'da build `devDependencies` ni ham o'rnatishi kerak (`npm install --include=dev && npm run build`), chunki TypeScript va Prisma CLI shularda.
 
 ```bash
 npm ci               # lock fayl commit qilingandan keyin (birinchi marta: npm install)
@@ -137,7 +137,7 @@ Barcha yo'llar `/api` prefiksi bilan. Qatlamlar: `route -> controller -> service
 |---|---|
 | `GET /api/health` | ishlaydi |
 | `GET /api` | modullar ro'yxati |
-| `GET /api/{users,suppliers,businesses,products,orders,contracts,payments,disputes,notifications}` va `/:id` | ulangan: autentifikatsiya + permission + egalik. Hozir autentifikatsiya yo'q, shuning uchun `501 AUTH_NOT_CONFIGURED`; baza yo'q bo'lsa `501 NOT_IMPLEMENTED` |
+| `GET /api/{users,suppliers,businesses,products,orders,contracts,payments,disputes,notifications}` va `/:id` | ulangan: autentifikatsiya + permission + egalik. token yo'q yoki yaroqsiz bo'lsa `401`; `JWT_SECRET` sozlanmagan bo'lsa `501 AUTH_NOT_CONFIGURED`; baza yo'q bo'lsa `501 NOT_IMPLEMENTED` |
 | `GET /api/admin/audit-logs` | faqat `ADMIN` roli + `audit.view` |
 | `GET /api/auth/me` | autentifikatsiya strategiyasi ulangach ishlaydi |
 | `POST /api/auth/telegram` | tayyorlov: tuzilma tekshiriladi, keyin `501` (token berilmaydi) |
@@ -191,7 +191,7 @@ Bu javob o'ralmagan (`success/data`siz), monitoring va load balancer uchun. Hozi
 
 ## 9. Database keyingi bosqichi
 
-`prisma/schema.prisma` hozir **qoralama (DRAFT)**: migratsiya yaratilmagan, baza ulanmagan, haqiqiy PostgreSQL bilan sinalmagan. Biznes jadvallari shu bosqichda ko'rib chiqilib tasdiqlanadi.
+Sxema Neon PostgreSQL'ga `20261011000000_init` migratsiyasi bilan qo'llangan. Biznes jadvallari ustida yozish amallari bosqichma-bosqich qo'shiladi; sxemani o'zgartirish har safar yangi migratsiya bilan bo'ladi (mavjudini tahrirlamang). Quyidagi ro'yxat boshlang'ich o'rnatish uchun tarixiy qo'llanma.
 
 1. PostgreSQL yarating va `.env` ga `DATABASE_URL` yozing.
 2. `npx prisma validate`
