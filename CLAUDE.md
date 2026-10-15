@@ -100,6 +100,7 @@ PostgreSQL (Neon)
   Pul ustunlari `BigInt`; `BigInt <-> number` aylantirish **faqat** `src/repositories/prisma/mappers.ts` da (2^53-1 dan katta qiymat xato).
 - Birinchi admin qo'lda SQL bilan yaratiladi: `backend/docs/ADMIN_BOOTSTRAP.md`.
 - Zaxira nusxa va tiklash (Neon oynasi, snapshot branch, tiklash mashqi): `backend/docs/BACKUP.md`. Monitoring (UptimeRobot, `/api/health` va `/api/ready`): `backend/docs/MONITORING.md`.
+- Migratsiya tartibi (Render `migrate deploy` qilmaydi: avval SQL asosiy Neon branch'da, keyin merge): `backend/docs/MIGRATIONS.md`.
 
 ### Sirlar va muhit
 - Render env'da: `DATABASE_URL`, `JWT_SECRET` (>= 32 belgi), `TELEGRAM_BOT_TOKEN`, `TELEGRAM_NOTIFICATIONS` (ixtiyoriy, `true` bilan yoqiladi), `CRON_SECRET` (ixtiyoriy, cron uchun; GitHub Secrets'da ham bir xil qiymat), `CORS_ORIGIN`, `NODE_ENV=production`, `TRUST_PROXY` va boshqalar (`backend/.env.example` ro'yxati).
