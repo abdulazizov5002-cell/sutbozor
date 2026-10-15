@@ -49,6 +49,7 @@ PostgreSQL (Neon)
   `useBackend: true` bo'lganda `index.html` oxiridagi blok faqat `loginWithTelegram()` ni chaqiradi va `#srv` qatorida ulanish holatini ko'rsatadi.
   Ilovaning o'zi (buyurtma, to'lov va h.k.) hali ham to'liq `localStorage` bilan ishlaydi.
   Alohida server bo'limlari (demo'dan mustaqil): `#reg` (ro'yxatdan o'tish), `#sprod` (supplier mahsulotlari), `#sord` (`srvOrders`: biznes buyurtma beradi/bekor qiladi, supplier qabul/rad etadi va kunlik yetkazish tugmalarini bosadi, shartnoma raqami va yetkazilgan kunlar ko'rinadi).
+  Shuningdek `#spay` (to'lov yozuvlari: biznes "To'lov qildim", supplier "Pul keldi/kelmadi"), `#sdis` (nizo ochish), `#adis` (`srvAdmin`, faqat server ADMIN: Nizolar hal qilish, Foydalanuvchilar bloklash/faollashtirish, Buyurtmalar/To'lovlar/Audit log o'qish). `#admin` ichidagi eski bo'limlar hali demo.
 - `scripts/generate-env.js`: deploy vaqtida `env.js` ni `SUTBOZOR_API_URL`, `SUTBOZOR_ENV`, `SUTBOZOR_USE_BACKEND` dan yozadi. `env.js` ochiq fayl, unga sir yozilmaydi.
 
 ### Backend (`backend/`)
