@@ -30,7 +30,7 @@ const iso = (d: Date): string => d.toISOString();
 const day = (d: Date): string => d.toISOString().slice(0, 10); // DATE ustunlari UTC yarim tunda keladi
 
 export const mapUser = (r: {
-  id: string; name: string; phone: string; email: string; role: User["role"]; status: User["status"];
+  id: string; name: string; phone: string; email: string | null; role: User["role"]; status: User["status"];
   businessId: string | null; supplierId: string | null; createdAt: Date; lastLoginAt: Date | null;
 }): User => ({
   id: r.id, name: r.name, phone: r.phone, email: r.email, role: r.role, businessId: r.businessId,

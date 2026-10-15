@@ -7,7 +7,7 @@ import { buildLoggerOptions, logRequestCompleted } from "./logging/logger";
 import { corsOrigins, env, isProd } from "./config/env";
 import { errorHandler, notFoundHandler } from "./middleware/errorHandler";
 import "./validation/errorMap";
-import type { TelegramAccountStore, TelegramVerifier, TokenService } from "./auth/ports";
+import type { RegistrationStore, TelegramAccountStore, TelegramVerifier, TokenService } from "./auth/ports";
 import { buildContainer } from "./container";
 import type { Repositories } from "./repositories/ports";
 import { createApiRoutes } from "./routes";
@@ -23,6 +23,8 @@ export interface BuildAppOptions {
   telegramAccounts?: TelegramAccountStore;
   /** Sessiya tokenlari (JWT_SECRET berilganda). */
   tokens?: TokenService;
+  /** Ro'yxatdan o'tish ombori (baza ulanganda). */
+  registrations?: RegistrationStore;
 }
 
 export async function buildApp(options: BuildAppOptions = {}): Promise<FastifyInstance> {
@@ -63,6 +65,7 @@ export async function buildApp(options: BuildAppOptions = {}): Promise<FastifyIn
     ...(options.telegramVerifier ? { telegramVerifier: options.telegramVerifier } : {}),
     ...(options.telegramAccounts ? { telegramAccounts: options.telegramAccounts } : {}),
     ...(options.tokens ? { tokens: options.tokens } : {}),
+    ...(options.registrations ? { registrations: options.registrations } : {}),
   })), { prefix: "/api" });
   return app;
 }

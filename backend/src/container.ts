@@ -1,4 +1,4 @@
-import type { TelegramAccountStore, TelegramVerifier, TokenService } from "./auth/ports";
+import type { RegistrationStore, TelegramAccountStore, TelegramVerifier, TokenService } from "./auth/ports";
 import { createUnimplementedTelegramVerifier } from "./auth/telegram/verifier";
 import { createAuthController } from "./controllers/auth.controller";
 import { entityController } from "./controllers/entity.controller";
@@ -17,6 +17,8 @@ export interface ContainerOptions {
   telegramAccounts?: TelegramAccountStore;
   /** Sessiya tokenlari (JWT). Berilmasa kirish 501. */
   tokens?: TokenService;
+  /** Ro'yxatdan o'tish ombori (Prisma). Berilmasa register 501. */
+  registrations?: RegistrationStore;
 }
 
 export function buildContainer(repositories: Repositories = notImplementedRepositories(), options: ContainerOptions = {}) {
@@ -37,6 +39,7 @@ export function buildContainer(repositories: Repositories = notImplementedReposi
       accounts: options.telegramAccounts,
       users: repositories.users,
       tokens: options.tokens,
+      registrations: options.registrations,
     }),
   };
   return { services, controllers };

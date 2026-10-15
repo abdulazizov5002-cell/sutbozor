@@ -6,6 +6,7 @@ import { env } from "./config/env";
 import { setAuthStrategy } from "./middleware/auth";
 import { disconnectPrisma, getPrisma } from "./lib/prisma";
 import { createPrismaRepositories } from "./repositories/prisma";
+import { createPrismaRegistrationStore } from "./repositories/prisma/registration";
 import { createPrismaTelegramAccountStore } from "./repositories/prisma/telegramAccount";
 
 async function main(): Promise<void> {
@@ -18,6 +19,7 @@ async function main(): Promise<void> {
     ? createTelegramVerifier({ botToken: env.TELEGRAM_BOT_TOKEN, maxAgeSec: env.TELEGRAM_INIT_DATA_MAX_AGE_SEC })
     : undefined;
   const telegramAccounts = repositories ? createPrismaTelegramAccountStore(getPrisma()) : undefined;
+  const registrations = repositories ? createPrismaRegistrationStore(getPrisma()) : undefined;
   // Bearer tekshiruvi: token (JWT_SECRET) va foydalanuvchi (baza) bo'lsa. Rol va holat har so'rovda bazadan olinadi.
   if (repositories && tokens) setAuthStrategy(createBearerStrategy({ tokens, users: repositories.users }));
 
@@ -26,6 +28,7 @@ async function main(): Promise<void> {
     ...(telegramVerifier ? { telegramVerifier } : {}),
     ...(telegramAccounts ? { telegramAccounts } : {}),
     ...(tokens ? { tokens } : {}),
+    ...(registrations ? { registrations } : {}),
   });
   if (!repositories) app.log.warn("DATABASE_URL berilmagan: ma'lumotlar bazasi ulanmagan.");
   app.log.info(

@@ -11,7 +11,7 @@ export const updateUserStatusBody = strictObject({
 export const createUserBody = strictObject({
   name: personName,
   phone,
-  email,
+  email: email.optional(),
   role,
   businessId: uuid.optional(),
   supplierId: uuid.optional(),
