@@ -74,6 +74,7 @@ pre.sc{background:var(--bg);border:1px solid var(--line);border-radius:10px;padd
 <p class="hint" id="foot" style="text-align:center;margin-top:16px"></p>
 <p class="hint" id="srv" style="text-align:center"></p>
 <div id="reg"></div>
+<div id="sprod"></div>
 </main>
 <div id="adm" hidden></div>
 <!-- Telegram Mini App kutubxonasi (initData beradi). Telegramdan tashqarida ham sahifa avvalgidek ishlaydi. -->
@@ -690,15 +691,45 @@ ${b?`<label>Turi<select data-f="type">${REG_TYPES.map(t=>`<option${t===F.type?" 
     if(!b&&!Number.isInteger(organization.deliveryRadiusKm)){msg="Yetkazish radiusini butun son (km) bilan kiriting.";draw();return}
     const payload={role,name:g("name"),phone:g("phone"),organization};if(g("email"))payload.email=g("email");
     busy=true;msg="";draw();
-    api.auth.register(payload).then(u=>{srv.textContent="Server: ulandi ("+u.role+")";box.innerHTML=`<div class="card"><h2>Ro'yxatdan o'tdingiz</h2><p class="hint">Hisobingiz yaratildi. Hozircha ilovaning asosiy bo'limlari demo ma'lumot bilan ishlaydi, haqiqiy buyurtmalar keyingi bosqichlarda ulanadi.</p></div>`})
+    api.auth.register(payload).then(u=>{srvUser(api,srv,u);box.innerHTML=`<div class="card"><h2>Ro'yxatdan o'tdingiz</h2><p class="hint">Hisobingiz yaratildi. Hozircha ilovaning asosiy bo'limlari demo ma'lumot bilan ishlaydi, haqiqiy buyurtmalar keyingi bosqichlarda ulanadi.</p></div>`})
     .catch(e=>{busy=false;msg=e&&e.message?e.message:"Xato yuz berdi.";if(e&&e.code==="CONFLICT"&&/allaqachon ro'yxatdan o'tgansiz/.test(e.message||""))msg+=" Sahifani qayta oching.";draw()})};
   box.addEventListener("input",e=>{const k=e.target&&e.target.dataset&&e.target.dataset.f;if(k)F[k]=e.target.value});
   box.addEventListener("click",e=>{const r=e.target.closest("[data-rr]");if(r){role=r.dataset.rr;msg="";draw();return}if(e.target.closest("[data-rg]"))submit()});
   draw()}
+/* Supplier: serverdagi mahsulotlar (POST/PATCH/DELETE /api/products). Faqat server ulangan va rol supplier bo'lsa ko'rinadi.
+   Demo bo'limlar (localStorage) ta'sirlanmaydi. Token 15 daqiqada tugaydi: 401 bo'lsa Telegram orqali qayta kiriladi. */
+function supProducts(api){
+  const box=$("sprod"),F={},NEW={name:"Sut",price:"",cap:"",today:""};let items=[],msg="",busy=false,delId=null;
+  const num=v=>v===""||v==null?NaN:Number(v);
+  const call=f=>(api.auth.isAuthenticated()?Promise.resolve():api.auth.loginWithTelegram()).then(f).catch(e=>{if(e&&e.status===401)return api.auth.loginWithTelegram().then(f);throw e});
+  const fail=e=>{busy=false;msg=e&&e.message?e.message:"Xato yuz berdi.";draw()};
+  const draw=()=>{
+    const rows=items.map(p=>{const v=F[p.id]||(F[p.id]={price:p.pricePerUnit,cap:p.dailyCapacity,today:p.availableToday});
+      return `<div class="row"><div><b>${esc(p.name)}</b><small>${esc(p.unit)} · narx so'm/${esc(p.unit)}</small>
+<div class="grid" style="margin-top:6px"><label>Narx<input type="number" inputmode="numeric" min="1" step="1" data-sp="${p.id}" data-k="price" value="${esc(v.price)}"></label><label>Bugun (${esc(p.unit)})<input type="number" inputmode="decimal" min="0" step="0.01" data-sp="${p.id}" data-k="today" value="${esc(v.today)}"></label><label>Kunlik hajm (${esc(p.unit)})<input type="number" inputmode="decimal" min="0" step="0.01" data-sp="${p.id}" data-k="cap" value="${esc(v.cap)}"></label></div></div>
+<div class="acts"><button class="btn s p" data-sa="save" data-id="${p.id}"${busy?" disabled":""}>Saqlash</button>${delId===p.id?`<button class="btn s d" data-sa="del2" data-id="${p.id}">Aniq o'chirish</button><button class="btn s" data-sa="delno">Yo'q</button>`:`<button class="btn s d" data-sa="del" data-id="${p.id}">O'chirish</button>`}</div></div>`}).join("");
+    box.innerHTML=`<div class="card"><h2>Mahsulotlarim (server)</h2><p class="hint">Bu ro'yxat serverda saqlanadi. Yuqoridagi demo bo'limlar hali brauzer xotirasida ishlaydi.</p>${rows||`<p class="hint">Hozircha mahsulot yo'q. Pastdan qo'shing.</p>`}
+<h3 style="font-size:16px;margin:14px 0 2px">Yangi mahsulot</h3><div class="grid"><label>Nomi<select data-np="name">${Object.keys(CAT).map(n=>`<option${n===NEW.name?" selected":""}>${esc(n)}</option>`).join("")}</select></label><label>Narx (so'm/${esc(CAT[NEW.name])})<input type="number" inputmode="numeric" min="1" step="1" data-np="price" value="${esc(NEW.price)}"></label><label>Bugun (${esc(CAT[NEW.name])})<input type="number" inputmode="decimal" min="0" step="0.01" data-np="today" value="${esc(NEW.today)}"></label><label>Kunlik hajm (${esc(CAT[NEW.name])})<input type="number" inputmode="decimal" min="0" step="0.01" data-np="cap" value="${esc(NEW.cap)}"></label></div>
+<p class="msg" role="alert">${esc(msg)}</p><div class="acts"><button class="btn p" data-sa="add"${busy?" disabled":""}>${busy?"Yuborilmoqda…":"Qo'shish"}</button></div></div>`};
+  const load=()=>call(()=>api.products.list({page:1,limit:100})).then(r=>{items=(r&&r.items)||[];busy=false;draw()}).catch(fail);
+  const need=(v,label,int)=>{if(!Number.isFinite(v)||v<0||(int&&(!Number.isInteger(v)||v<1)))return label+(int?" musbat butun son bo'lishi kerak.":" manfiy bo'lmagan son bo'lishi kerak.");return ""};
+  const add=()=>{const price=num(NEW.price),cap=num(NEW.cap),today=num(NEW.today);
+    const er=need(price,"Narx",true)||need(cap,"Kunlik hajm")||need(today,"Bugungi miqdor");if(er){msg=er;draw();return}
+    busy=true;msg="";draw();call(()=>api.products.create({name:NEW.name,pricePerUnit:price,dailyCapacity:cap,availableToday:today})).then(()=>{NEW.price=NEW.cap=NEW.today="";return load()}).catch(fail)};
+  const save=id=>{const v=F[id];if(!v)return;const price=num(v.price),cap=num(v.cap),today=num(v.today);
+    const er=need(price,"Narx",true)||need(cap,"Kunlik hajm")||need(today,"Bugungi miqdor");if(er){msg=er;draw();return}
+    busy=true;msg="";draw();call(()=>api.products.update(id,{pricePerUnit:price,dailyCapacity:cap,availableToday:today})).then(()=>{delete F[id];return load()}).catch(fail)};
+  const del=id=>{busy=true;msg="";delId=null;draw();call(()=>api.products.remove(id)).then(()=>{delete F[id];return load()}).catch(fail)};
+  box.addEventListener("input",e=>{const d=e.target&&e.target.dataset;if(!d)return;if(d.np){NEW[d.np]=e.target.value;if(d.np==="name")draw()}else if(d.sp&&F[d.sp])F[d.sp][d.k]=e.target.value});
+  box.addEventListener("click",e=>{if(busy)return;const b=e.target.closest("[data-sa]");if(!b)return;const a=b.dataset.sa,id=b.dataset.id;
+    if(a==="add")add();else if(a==="save")save(id);else if(a==="del"){delId=id;draw()}else if(a==="delno"){delId=null;draw()}else if(a==="del2")del(id)});
+  busy=true;draw();load()}
+/* Serverga kirgan foydalanuvchi: holat qatori + (supplier bo'lsa) mahsulotlar bo'limi. */
+function srvUser(api,el,u){el.textContent="Server: ulandi ("+u.role+")";if(u.role==="supplier"&&!$("sprod").dataset.on){$("sprod").dataset.on="1";supProducts(api)}}
 (function(){try{const el=$("srv"),api=srvApi();if(!el||!api)return;
 const tg=window.Telegram&&window.Telegram.WebApp;try{if(tg&&tg.ready)tg.ready()}catch(x){}
 el.textContent="Server bilan ulanmoqda…";
-api.auth.loginWithTelegram().then(u=>{el.textContent="Server: ulandi ("+u.role+")"}).catch(e=>{
+api.auth.loginWithTelegram().then(u=>srvUser(api,el,u)).catch(e=>{
   if(e&&e.code==="ACCOUNT_NOT_LINKED"){el.textContent="Server: ro'yxatdan o'tmagansiz";regForm(api,el);return}
   el.textContent="Server: "+(e&&e.code?e.code:"xato")+(e&&e.message?" - "+e.message:"")})}catch(x){}})();
 route();
