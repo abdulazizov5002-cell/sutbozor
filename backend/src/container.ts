@@ -3,6 +3,7 @@ import { createUnimplementedTelegramVerifier } from "./auth/telegram/verifier";
 import { createAuthController } from "./controllers/auth.controller";
 import { entityController } from "./controllers/entity.controller";
 import { orderController } from "./controllers/order.controller";
+import { paymentController } from "./controllers/payment.controller";
 import { productController } from "./controllers/product.controller";
 import { notImplementedRepositories } from "./repositories/notImplemented";
 import type { Repositories } from "./repositories/ports";
@@ -32,7 +33,7 @@ export function buildContainer(repositories: Repositories = notImplementedReposi
     products: productController(services.products),
     orders: orderController(services.orders),
     contracts: entityController(services.contracts),
-    payments: entityController(services.payments),
+    payments: paymentController(services.payments),
     disputes: entityController(services.disputes),
     notifications: entityController(services.notifications),
     auditLogs: entityController(services.audit),

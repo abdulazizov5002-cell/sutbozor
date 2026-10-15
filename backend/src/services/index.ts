@@ -1,10 +1,11 @@
 import type { Repositories } from "../repositories/ports";
 import {
-  canAccessContract, canAccessDispute, canAccessNotification, canAccessPayment,
+  canAccessContract, canAccessDispute, canAccessNotification,
   notificationScope, ownerScope,
 } from "../policies/ownership";
 import { createAuditService } from "./audit.service";
 import { createOrderService } from "./order.service";
+import { createPaymentService } from "./payment.service";
 import { createProductService } from "./product.service";
 import { createScopedReadService } from "./scopedRead.service";
 
@@ -20,7 +21,7 @@ export function createServices(r: Repositories) {
     products: createProductService(r.products),
     orders: createOrderService(r.orders),
     contracts: createScopedReadService({ repo: r.contracts, anyOf: ["contracts.view", "contracts.create"], scope: ownerScope, canAccess: canAccessContract }),
-    payments: createScopedReadService({ repo: r.payments, anyOf: ["payments.view"], scope: ownerScope, canAccess: canAccessPayment }),
+    payments: createPaymentService(r.payments),
     disputes: createScopedReadService({ repo: r.disputes, anyOf: ["disputes.manage", "disputes.create"], scope: ownerScope, canAccess: canAccessDispute }),
     notifications: createScopedReadService({ repo: r.notifications, anyOf: [], scope: notificationScope, canAccess: canAccessNotification }),
     audit: createAuditService(r.audit),

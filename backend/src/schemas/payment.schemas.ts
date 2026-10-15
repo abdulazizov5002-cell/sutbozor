@@ -1,27 +1,22 @@
 import { z } from "zod";
-import { optionalText, paymentMethod, pastOrToday, positiveMoney, strictObject } from "./primitives";
+import { optionalText, paymentMethod, pastOrToday, strictObject, text } from "./primitives";
 
-/** Business "To'lov qildim": summa to'lov summasiga tengligi servisda (bazadagi qiymat bilan) tekshiriladi. */
-export const submitPaymentBody = strictObject({
-  amount: positiveMoney,
-  paymentMethod,
-  transactionId: z
-    .string()
-    .trim()
-    .min(4)
-    .max(60)
-    .regex(/^[A-Za-z0-9._\-/]+$/, "Faqat harf, raqam va . _ - / belgilari ruxsat etiladi."),
-  paidAt: pastOrToday,
-  note: optionalText(300),
-});
-export type SubmitPaymentBody = z.infer<typeof submitPaymentBody>;
-
-/** Supplier to'lovni tasdiqlaydi yoki nizo ochadi. */
-export const resolvePaymentBody = strictObject({
-  decision: z.enum(["confirm", "dispute"]),
-  note: optionalText(300),
-}).superRefine((v, ctx) => {
-  if (v.decision === "dispute" && v.note.length < 5) {
-    ctx.addIssue({ code: "custom", path: ["note"], message: "Nizo sababini kamida 5 belgi bilan yozing." });
-  }
-});
+/**
+ * To'lov yozuvi ustida harakat. SutBozor pul ushlab turmaydi: to'lov biznesdan supplierga to'g'ridan-to'g'ri o'tadi,
+ * bu yerda faqat yozib boriladi.
+ * - submit (business): "To'lov qildim" — usul, tranzaksiya raqami, sana. Summa serverda (clientdan olinmaydi).
+ * - confirm (supplier): "Pul keldi" — to'lov PAID.
+ * - reject (supplier): "Pul kelmadi" — sabab bilan, to'lov DISPUTED; biznes qayta yuborishi mumkin.
+ */
+export const paymentActionBody = z.discriminatedUnion("action", [
+  strictObject({
+    action: z.literal("submit"),
+    method: paymentMethod,
+    transactionId: text(3, 60),
+    paidOn: pastOrToday,
+    note: optionalText(300),
+  }),
+  strictObject({ action: z.literal("confirm") }),
+  strictObject({ action: z.literal("reject"), reason: text(3, 300) }),
+]);
+export type PaymentActionBody = z.infer<typeof paymentActionBody>;

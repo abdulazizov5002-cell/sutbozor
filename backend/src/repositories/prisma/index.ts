@@ -1,7 +1,8 @@
 import type { PrismaClient } from "@prisma/client";
 import { conflict } from "../../utils/errors";
 import type { NewAuditLog } from "../../domain/entities";
-import type { ListParams, NewNotification, OrderRepository, Page, ProductRepository, ReadRepository, Repositories, Recipient, Scope } from "../ports";
+import { buildPaymentPlan, deliveryPayment, type PlannedPayment } from "../../domain/paymentPlan";
+import type { ListParams, NewNotification, OrderRepository, Page, PaymentRepository, ProductRepository, ReadRepository, Repositories, Recipient, Scope } from "../ports";
 import {
   mapAuditLog, mapBusiness, mapContract, mapDispute, mapNotification, mapOrder, mapPayment, mapProduct, mapSupplier, mapUser, money, toBigInt,
 } from "./mappers";
@@ -81,6 +82,7 @@ export function createPrismaRepositories(prisma: PrismaClient): Repositories {
         });
         return r.count;
       },
+      ...paymentWrites(prisma),
     },
     disputes: readRepository({ delegate: db.dispute!, map: mapDispute, orderBy: { createdAt: "desc" }, where: party }),
     notifications: {
@@ -273,12 +275,29 @@ function orderWrites(prisma: PrismaClient): Pick<OrderRepository, "findOfferings
               },
             });
             await tx.orderItem.update({ where: { id: input.itemId }, data: { contractId: contract.id } });
+            // To'lov jadvali (DELIVERY bo'lsa bo'sh: har yetkazilgan kun uchun alohida yaratiladi).
+            const plan = buildPaymentPlan({
+              schedule: before.paymentSchedule, days: before.days, quantityPerDay: Number(item.quantityPerDay),
+              pricePerUnit: money(item.pricePerUnit), startDate: input.contract.startDate,
+            });
+            await createPayments(tx, plan, {
+              orderId: before.id, contractId: contract.id, businessId: before.businessId, supplierId: item.supplierId, schedule: before.paymentSchedule,
+            });
           } else if (item.contractId) {
             // To'xtatish/davom ettirish/yakunlash shartnoma holatiga ham o'tadi.
             const next = completes ? "COMPLETED" : input.to.status;
             if (next === "ACTIVE" || next === "PAUSED" || next === "COMPLETED") {
               await tx.contract.update({ where: { id: item.contractId }, data: { status: next } });
             }
+          }
+
+          // DELIVERY jadvali: xaridor tasdiqlagan har kun uchun alohida to'lov.
+          if (counted !== null && before.paymentSchedule === "DELIVERY" && item.contractId) {
+            await createPayments(
+              tx,
+              [deliveryPayment({ dayNo: counted, quantityPerDay: Number(item.quantityPerDay), pricePerUnit: money(item.pricePerUnit), today: input.delivery!.today })],
+              { orderId: before.id, contractId: item.contractId, businessId: before.businessId, supplierId: item.supplierId, schedule: before.paymentSchedule },
+            );
           }
 
           const row = await tx.order.findUnique({ where: { id: input.orderId }, include: { items: true } });
@@ -295,13 +314,71 @@ function orderWrites(prisma: PrismaClient): Pick<OrderRepository, "findOfferings
 }
 
 /**
- * Ketma-ket raqam (SB-<n>, CT-<n>): `sequences` jadvalidagi qator tranzaksiya ichida oshiriladi (qator qulfi).
- * Birinchi yaratishda ikki so'rov to'qnashsa P2002 bo'ladi: withSequenceRetry qayta urinadi.
+ * Ketma-ket raqam (SB-<n>, CT-<n>, PAY-<n>): `sequences` jadvalidagi qator tranzaksiya ichida oshiriladi (qator qulfi).
+ * `count` ta raqam birdan band qilinadi, birinchisi qaytariladi. Birinchi yaratishda ikki so'rov to'qnashsa P2002 bo'ladi:
+ * withSequenceRetry qayta urinadi.
  */
-async function nextNumber(tx: any, name: "order" | "contract"): Promise<number> {
-  const seq = await tx.sequence.upsert({ where: { name }, create: { name, value: 1001 }, update: { value: { increment: 1 } } });
-  return seq.value as number;
+async function nextNumbers(tx: any, name: "order" | "contract" | "payment", count: number): Promise<number> {
+  const seq = await tx.sequence.upsert({ where: { name }, create: { name, value: 1000 + count }, update: { value: { increment: count } } });
+  return (seq.value as number) - count + 1;
 }
+const nextNumber = (tx: any, name: "order" | "contract" | "payment"): Promise<number> => nextNumbers(tx, name, 1);
+
+/** To'lov yozuvlari (faqat yozib borish): komissiya 0%, amount = grossAmount = supplierAmount (bazada CHECK ham bor). */
+async function createPayments(
+  tx: any,
+  plan: PlannedPayment[],
+  meta: { orderId: string; contractId: string; businessId: string; supplierId: string; schedule: string },
+): Promise<void> {
+  if (plan.length === 0) return;
+  const first = await nextNumbers(tx, "payment", plan.length);
+  await tx.payment.createMany({
+    data: plan.map((x, i) => ({
+      publicId: `PAY-${first + i}`, orderId: meta.orderId, contractId: meta.contractId, businessId: meta.businessId, supplierId: meta.supplierId,
+      amount: toBigInt(x.amount), currency: "UZS", paymentPeriod: meta.schedule, periodNo: x.periodNo, fromDay: x.fromDay, toDay: x.toDay, days: x.days,
+      dueDate: new Date(`${x.dueDate}T00:00:00.000Z`), status: "PENDING",
+      platformCommission: 0n, grossAmount: toBigInt(x.amount), supplierAmount: toBigInt(x.amount),
+    })),
+  });
+}
+
+/** To'lov holatini o'tkazish: holat, audit va bildirishnoma bitta tranzaksiyada. Tranzaksiya raqami takrori -> 409. */
+function paymentWrites(prisma: PrismaClient): Pick<PaymentRepository, "transition"> {
+  return {
+    async transition(input, hooks) {
+      try {
+        return await prisma.$transaction(async (tx) => {
+          const set = input.set ?? {};
+          const changed = await tx.payment.updateMany({
+            where: {
+              id: input.id, status: { in: input.from },
+              ...(input.businessId ? { businessId: input.businessId } : {}),
+              ...(input.supplierId ? { supplierId: input.supplierId } : {}),
+            },
+            data: {
+              status: input.to,
+              ...(set.paymentMethod !== undefined ? { paymentMethod: set.paymentMethod } : {}),
+              ...(set.transactionId !== undefined ? { transactionId: set.transactionId } : {}),
+              ...(set.paidAt !== undefined ? { paidAt: new Date(`${set.paidAt}T00:00:00.000Z`) } : {}),
+              ...(set.note !== undefined ? { note: set.note } : {}),
+            },
+          });
+          if (changed.count !== 1) return null;
+          const row = await tx.payment.findUnique({ where: { id: input.id } });
+          if (!row) return null;
+          const payment = mapPayment(row);
+          await tx.auditLog.create({ data: auditData(hooks.audit(payment)) });
+          await notifyUsers(tx, recipientWhere(hooks.recipient), hooks.notify(payment));
+          return payment;
+        });
+      } catch (e) {
+        if (prismaCode(e) === "P2002") throw conflict("Bu tranzaksiya raqami allaqachon boshqa to'lov uchun ishlatilgan.");
+        throw e;
+      }
+    },
+  };
+}
+
 async function withSequenceRetry<T>(run: () => Promise<T>): Promise<T> {
   for (let attempt = 0; ; attempt++) {
     try {
