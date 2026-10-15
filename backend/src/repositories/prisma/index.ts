@@ -1,11 +1,11 @@
 import type { PrismaClient } from "@prisma/client";
-import { conflict } from "../../utils/errors";
+import { conflict, notFound } from "../../utils/errors";
 import type { NewAuditLog } from "../../domain/entities";
 import { queueDelivery, withDelivery, type NotificationDelivery } from "./delivery";
 import { buildPaymentPlan, deliveryPayment, type PlannedPayment } from "../../domain/paymentPlan";
-import type { DisputeRepository, UserRepository, ListParams, NewNotification, OrderRepository, Page, PaymentRepository, ProductRepository, ReadRepository, Repositories, Recipient, Scope } from "../ports";
+import type { DisputeRepository, RatingRepository, UserRepository, ListParams, NewNotification, OrderRepository, Page, PaymentRepository, ProductRepository, ReadRepository, Repositories, Recipient, Scope } from "../ports";
 import {
-  mapAuditLog, mapBusiness, mapContract, mapDispute, mapNotification, mapOrder, mapPayment, mapProduct, mapSupplier, mapUser, money, toBigInt,
+  mapAuditLog, mapBusiness, mapContract, mapDispute, mapNotification, mapOrder, mapPayment, mapProduct, mapRating, mapSupplier, mapUser, money, toBigInt,
 } from "./mappers";
 
 /** Prisma delegate'ining bizga kerak qismi (strukturaviy tur, har qanday model delegate'i mos keladi). */
@@ -94,6 +94,7 @@ export function createPrismaRepositories(base: PrismaClient, options: { delivery
       ...readRepository({ delegate: db.dispute!, map: mapDispute, orderBy: { createdAt: "desc" }, where: party }),
       ...disputeWrites(prisma),
     },
+    ratings: ratingWrites(prisma),
     notifications: {
       ...readRepository({
         delegate: db.notification!, map: mapNotification, orderBy: { createdAt: "desc" },
@@ -484,4 +485,41 @@ async function withSequenceRetry<T>(run: () => Promise<T>): Promise<T> {
       throw e;
     }
   }
+}
+
+/**
+ * Baho: yozuv + baholangan tomonning o'rtacha bali/soni + audit + bildirishnoma bitta tranzaksiyada.
+ * Takroriy baho (orderItemId + side unique, P2002) -> 409. O'rtacha `updateMany ... ratingCount = eski` sharti bilan yangilanadi:
+ * ikki baho bir vaqtda kelsa ikkinchisi qayta o'qib urinadi (bal yo'qolmaydi).
+ */
+function ratingWrites(prisma: PrismaClient): RatingRepository {
+  return {
+    async create(input, hooks) {
+      return prisma.$transaction(async (tx: any) => {
+        let row;
+        try {
+          row = await tx.rating.create({
+            data: { orderItemId: input.orderItemId, side: input.side, scores: { overall: input.score }, comment: input.comment },
+          });
+        } catch (e) {
+          if (prismaCode(e) === "P2002") throw conflict("Siz bu buyurtmani allaqachon baholagansiz.");
+          throw e;
+        }
+        const target = input.side === "TO_SUPPLIER" ? tx.supplier : tx.business;
+        for (let attempt = 0; ; attempt++) {
+          const cur = await target.findUnique({ where: { id: input.rateeId }, select: { rating: true, ratingCount: true } });
+          if (!cur) throw notFound();
+          const count = cur.ratingCount + 1;
+          const average = Math.round(((cur.rating * cur.ratingCount + input.score) / count) * 100) / 100;
+          const r = await target.updateMany({ where: { id: input.rateeId, ratingCount: cur.ratingCount }, data: { rating: average, ratingCount: count } });
+          if (r.count === 1) break;
+          if (attempt >= 4) throw conflict("Server band, qayta urinib ko'ring.");
+        }
+        const rating = mapRating(row);
+        await tx.auditLog.create({ data: auditData(hooks.audit(rating)) });
+        await notifyUsers(tx, recipientWhere(hooks.recipient), hooks.notify(rating));
+        return rating;
+      });
+    },
+  };
 }

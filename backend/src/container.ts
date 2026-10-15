@@ -2,6 +2,7 @@ import type { RegistrationStore, TelegramAccountStore, TelegramVerifier, TokenSe
 import { createUnimplementedTelegramVerifier } from "./auth/telegram/verifier";
 import { createAuthController } from "./controllers/auth.controller";
 import { disputeController } from "./controllers/dispute.controller";
+import { ratingController } from "./controllers/rating.controller";
 import { entityController } from "./controllers/entity.controller";
 import { orderController } from "./controllers/order.controller";
 import { notificationController } from "./controllers/notification.controller";
@@ -38,6 +39,7 @@ export function buildContainer(repositories: Repositories = notImplementedReposi
     contracts: entityController(services.contracts),
     payments: paymentController(services.payments),
     disputes: disputeController(services.disputes),
+    ratings: ratingController(services.ratings),
     notifications: notificationController(services.notifications),
     auditLogs: entityController(services.audit),
     auth: createAuthController({

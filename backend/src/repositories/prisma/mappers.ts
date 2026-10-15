@@ -1,5 +1,5 @@
 import type {
-  AuditLog, Business, Contract, Dispute, Notification, Order, OrderItem, Payment, Product, Supplier, User,
+  AuditLog, Business, Contract, Dispute, Notification, Order, OrderItem, Payment, Product, Rating, Supplier, User,
 } from "../../domain/entities";
 import { isMoney, type Money } from "../../domain/money";
 
@@ -111,3 +111,11 @@ export const mapAuditLog = (r: {
   id: string; ts: Date; actorId: string | null; actorName: string; actorRole: string; action: string;
   objectType: string; objectId: string; description: string;
 }): AuditLog => ({ ...r, ts: iso(r.ts), actorRole: r.actorRole as AuditLog["actorRole"] });
+
+export const mapRating = (r: {
+  id: string; orderItemId: string; side: Rating["side"]; scores: unknown; comment: string; createdAt: Date;
+}): Rating => {
+  const overall = (r.scores as { overall?: unknown } | null)?.overall;
+  if (typeof overall !== "number") throw new Error("Rating.scores.overall noto'g'ri.");
+  return { id: r.id, orderItemId: r.orderItemId, side: r.side, score: overall, comment: r.comment, createdAt: iso(r.createdAt) };
+};

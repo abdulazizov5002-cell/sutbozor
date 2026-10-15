@@ -1,6 +1,6 @@
 import type { DeliveryStatus, DisputeReason, DisputeStatus, NotificationType, OrderItemStatus, PaymentStatus, UserStatus } from "../config/constants";
 import type {
-  AuditLog, Business, Contract, Dispute, ISODate, NewAuditLog, Notification, Order, Payment, Product, Supplier, User,
+  AuditLog, Business, Contract, Dispute, ISODate, NewAuditLog, Notification, Order, Payment, Product, Rating, Supplier, User,
 } from "../domain/entities";
 
 /**
@@ -205,6 +205,22 @@ export interface AuditLogRepository extends ReadRepository<AuditLog> {
   append(entry: NewAuditLog): Promise<AuditLog>;
 }
 
+export interface NewRating {
+  orderItemId: string;
+  side: "TO_SUPPLIER" | "TO_BUSINESS";
+  /** Baholanayotgan tomon: TO_SUPPLIER -> supplierId, TO_BUSINESS -> businessId. */
+  rateeId: string;
+  score: number;
+  comment: string;
+}
+export interface RatingRepository {
+  /**
+   * Baho + baholangan tomonning o'rtacha bali/soni + audit + bildirishnoma bitta tranzaksiyada.
+   * Shu qism uchun shu tomon allaqachon baholagan bo'lsa 409.
+   */
+  create(input: NewRating, hooks: { audit: (created: Rating) => NewAuditLog; recipient: Recipient; notify: (created: Rating) => NewNotification }): Promise<Rating>;
+}
+
 export interface Repositories {
   users: UserRepository;
   businesses: BusinessRepository;
@@ -214,6 +230,7 @@ export interface Repositories {
   contracts: ContractRepository;
   payments: PaymentRepository;
   disputes: DisputeRepository;
+  ratings: RatingRepository;
   notifications: NotificationRepository;
   audit: AuditLogRepository;
 }
